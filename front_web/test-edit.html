@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Edit Signalement</title>
+</head>
+<body>
+    <h1>Test Edit Signalement</h1>
+    <button onclick="testUpdate()">Test PUT /api/signalements/1</button>
+    <pre id="log" style="border: 1px solid #ccc; padding: 10px; margin-top: 20px; height: 300px; overflow-y: auto;"></pre>
+
+    <script>
+        async function testUpdate() {
+            const logEl = document.getElementById('log');
+            logEl.innerHTML = '';
+            
+            function log(msg) {
+                console.log(msg);
+                logEl.innerHTML += msg + '\n';
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+
+            log('📝 Démarrage du test de PUT...');
+            
+            try {
+                const data = {
+                    status: 'en_cours',
+                    description: 'Test from HTML',
+                    surfaceM2: 123,
+                    budget: 999999,
+                    entrepriseConcernee: 'Test Company'
+                };
+
+                log('📤 Envoi de: ' + JSON.stringify(data));
+
+                const response = await fetch('http://localhost:8080/api/signalements/1', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                log('📥 Statut: ' + response.status);
+
+                const responseData = await response.json();
+                log('📥 Réponse: ' + JSON.stringify(responseData, null, 2));
+
+                if (response.ok) {
+                    log('✅ Succès!');
+                } else {
+                    log('❌ Erreur: ' + response.statusText);
+                }
+            } catch (err) {
+                log('❌ Exception: ' + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
