@@ -1,0 +1,43 @@
+{
+  "name": "mobile-frontend",
+  "version": "1.0.0",
+  "description": "Application mobile de signalement des travaux routiers à Antananarivo",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "ionic:serve": "vite --host"
+  },
+  "keywords": [
+    "vue",
+    "ionic",
+    "mobile",
+    "antananarivo",
+    "signalement"
+  ],
+  "author": "MrRojo Team",
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor/camera": "^8.0.0",
+    "@capacitor/cli": "^7.4.5",
+    "@capacitor/core": "^8.0.2",
+    "@capacitor/geolocation": "^8.0.0",
+    "@capacitor/ios": "^8.0.2",
+    "@ionic/vue": "^8.7.17",
+    "@ionic/vue-router": "^8.7.17",
+    "@vue-leaflet/vue-leaflet": "^0.10.1",
+    "axios": "^1.13.3",
+    "ionicons": "^8.0.13",
+    "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.27",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.4",
+    "vite": "^5.4.10"
+  }
+}

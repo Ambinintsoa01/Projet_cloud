@@ -1,0 +1,8 @@
+{
+  "name": "mobile-frontend",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue",
+  "id": "com.mrrojo.signalement"
+}

@@ -1,0 +1,29 @@
+{
+  "appId": "com.mrrojo.signalement",
+  "appName": "Signalement Travaux Routiers",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "Geolocation": {
+      "enableHighAccuracy": true,
+      "timeout": 10000,
+      "maximumAge": 30000
+    },
+    "Camera": {
+      "allowEditing": false,
+      "saveToPhotoAlbum": false,
+      "width": 1024,
+      "height": 1024,
+      "preserveAspectRatio": true,
+      "quality": 80
+    }
+  },
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https",
+    "allowNavigation": [
+      "http://172.20.10.3:8080",
+      "http://172.20.*:8080"
+    ]
+  }
+}
