@@ -1,0 +1,3 @@
+firebase:
+  credentials:
+    path: file:/app/firebase/firebase-credentials.json

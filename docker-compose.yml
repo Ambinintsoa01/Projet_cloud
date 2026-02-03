@@ -1,0 +1,170 @@
+version: '3.8'
+
+services:
+  # Base de données PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: cloud-postgres
+    environment:
+      POSTGRES_DB: cloud_db
+      POSTGRES_USER: cloud_user
+      POSTGRES_PASSWORD: cloud_pass
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - cloud-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cloud_user -d cloud_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis pour les sessions et cache
+  redis:
+    image: redis:7-alpine
+    container_name: cloud-redis
+    command: redis-server --appendonly yes --requirepass redis_pass
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - cloud-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_pass", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  tileserver:
+    image: maptiler/tileserver-gl:latest
+    container_name: cloud-tileserver
+    volumes:
+      - ./maps:/data
+    ports:
+      - "8090:8080"
+    networks:
+      - cloud-network
+    restart: unless-stopped
+
+
+  # Application Spring Boot
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: identity-app
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: docker
+
+      # Database Configuration
+      SPRING_DATASOURCE_URL: jdbc:postgresql://cloud-postgres:5432/cloud_db
+      SPRING_DATASOURCE_USERNAME: cloud_user
+      SPRING_DATASOURCE_PASSWORD: cloud_pass
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+
+      # JPA/Hibernate
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "false"
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+
+      # Redis Configuration
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: redis_pass
+
+      # JWT Configuration
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production-minimum-256-bits
+      JWT_EXPIRATION: 86400000
+
+      # Auth Settings
+      AUTH_MAX_ATTEMPTS: 3
+      AUTH_LOCKOUT_DURATION: 900000
+
+      # Session
+      SESSION_TIMEOUT: 3600000
+
+      # Firebase
+      FIREBASE_CREDENTIALS_PATH: /app/firebase/firebase-credentials.json
+      FIREBASE_CONNECTION_TIMEOUT: 3000
+      FIREBASE_HOST: www.google.com
+      FIREBASE_PORT: 443
+
+      # Logging
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_COM_PROJET_CLOUD: DEBUG
+
+      # JVM Options (add-opens to fix Firestore reflection on java.time.chrono)
+      JAVA_OPTS: "-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 --add-opens=java.base/java.time.chrono=ALL-UNNAMED"
+    volumes:
+      - ./firebase-credentials.json:/app/firebase/firebase-credentials.json:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - cloud-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # PgAdmin (optionnel)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cloud-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    networks:
+      - cloud-network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    profiles:
+      - debug
+
+  # Redis Commander (optionnel)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: cloud-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379:0:redis_pass
+    ports:
+      - "8081:8081"
+    networks:
+      - cloud-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+    profiles:
+      - debug
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  cloud-network:
+    driver: bridge

@@ -1,0 +1,61 @@
+# Configuration Firebase pour application.yml
+
+# Ajouter ces lignes à votre application.yml (ou application.properties)
+
+firebase:
+  credentials:
+    path: ${FIREBASE_CREDENTIALS_PATH:firebase-credentials.json}
+  
+  firestore:
+    project-id: ${FIREBASE_PROJECT_ID:your-project-id}
+    database-id: ${FIREBASE_DATABASE_ID:(default)}
+  
+  sync:
+    # Synchroniser automatiquement au démarrage
+    auto-seed: true
+    # Intervalle de synchronisation (secondes, 0 = désactivé)
+    interval-seconds: 3600
+    # Nombre max de documents par batch operation
+    batch-size: 100
+    # Timeout pour les requêtes Firestore (secondes)
+    request-timeout: 30
+
+# Logging pour les services Firebase
+logging:
+  level:
+    com.google.cloud: INFO
+    com.google.firebase: INFO
+    com.google.auth: WARN
+    io.grpc: WARN
+    com.projet.Cloud.service.FirebaseSignalementService: DEBUG
+    com.projet.Cloud.util.FirebaseDataSeeder: INFO
+    com.projet.Cloud.controller.FirebaseSignalementController: DEBUG
+
+# Configuration Spring pour les threads async
+spring:
+  task:
+    execution:
+      thread-name-prefix: firebase-
+      pool:
+        core-size: 2
+        max-size: 5
+        queue-capacity: 100
+  
+  task:
+    scheduling:
+      thread-name-prefix: firestore-schedule-
+      pool:
+        size: 1
+
+# Configuration pour gérer les grandes réponses JSON
+server:
+  compression:
+    enabled: true
+    min-response-size: 1024
+  
+  servlet:
+    context-path: /api
+  
+  tomcat:
+    threads:
+      max: 200

@@ -1,0 +1,59 @@
+spring:
+  # Configuration H2 pour les tests
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+    hikari:
+      maximum-pool-size: 5
+  
+  # Configuration JPA pour H2
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: false
+        show_sql: false
+    show-sql: false
+  
+  # Redis - Utiliser un port différent ou mock pour les tests
+  data:
+    redis:
+      repositories:
+        enabled: false
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 1000ms
+    # Pas de mot de passe pour les tests
+
+# Configuration Firebase pour les tests
+firebase:
+  connection:
+    timeout: 1000  # Timeout court pour les tests
+  host: www.google.com
+  port: 443
+
+# JWT pour les tests
+jwt:
+  secret: test-secret-key-minimum-256-bits-for-hs512-algorithm-testing
+  expiration: 3600000
+
+# Auth
+auth:
+  max-attempts: 3
+  lockout-duration: 900000
+
+# Désactiver le scheduling dans les tests
+spring.task.scheduling.enabled: false
+
+# Logging minimal
+logging:
+  level:
+    root: ERROR
+    com.projet.Cloud: INFO
+    org.springframework: ERROR
+    org.hibernate: ERROR

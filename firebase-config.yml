@@ -1,0 +1,35 @@
+# Configuration Firebase pour application.yml
+
+firebase:
+  # Chemin vers le fichier de credentials Firebase
+  credentials:
+    path: firebase-credentials.json
+  
+  # Configuration Firestore
+  firestore:
+    project-id: ${FIREBASE_PROJECT_ID:your-project-id}
+    database-id: ${FIREBASE_DATABASE_ID:(default)}
+    
+  # Configuration de synchronisation
+  sync:
+    # Synchroniser automatiquement au démarrage
+    auto-seed: true
+    # Intervalle de synchronisation en secondes (0 = désactivé)
+    interval-seconds: 3600
+    # Nombre max de documents par batch
+    batch-size: 100
+    
+  # Configuration de sécurité
+  security:
+    # Activer la validation des règles Firestore
+    validate-rules: true
+    # Timeout pour les requêtes (en secondes)
+    request-timeout: 30
+
+# Logging pour Firebase
+logging:
+  level:
+    com.google.cloud: INFO
+    com.google.firebase: INFO
+    com.projet.Cloud.service.FirebaseSignalementService: DEBUG
+    com.projet.Cloud.util.FirebaseDataSeeder: INFO

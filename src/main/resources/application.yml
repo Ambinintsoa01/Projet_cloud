@@ -1,0 +1,131 @@
+spring:
+  application:
+    name: identity-provider
+  
+  profiles:
+    active: dev
+
+# # Configuration serveur
+server:
+  address: 0.0.0.0
+  port: 8080
+  servlet:
+    context-path: /
+
+# Configuration Firebase
+firebase:
+  connection:
+    timeout: 3000  # Timeout en ms pour la détection de connexion
+  host: www.google.com  # Host pour tester la connexion
+  port: 443
+  credentials:
+    path: ${FIREBASE_CREDENTIALS_PATH:classpath:firebase-credentials.json}
+
+# Configuration JWT
+jwt:
+  secret: ${JWT_SECRET:your-super-secret-jwt-key-change-this-in-production}
+  expiration: ${JWT_EXPIRATION:3600000}  # 24 heures
+
+# Configuration Auth
+auth:
+  max-attempts: ${AUTH_MAX_ATTEMPTS:3}
+  lockout-duration: ${AUTH_LOCKOUT_DURATION:900000}  # 15 minutes
+
+# Configuration de session
+session:
+  timeout: ${SESSION_TIMEOUT:3600000}  # 1 heure
+
+---
+# Profil Development
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/cloud_db
+    username: cloud_user
+    password: cloud_pass
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true
+  
+  redis:
+    host: localhost
+    port: 6379
+    password: redis_pass
+
+logging:
+  level:
+    root: INFO
+    com.projet.Cloud: DEBUG
+
+---
+# Profil Docker
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/cloud_db
+    username: cloud_user
+    password: cloud_pass
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  redis:
+    host: redis
+    port: 6379
+    password: redis_pass
+
+logging:
+  level:
+    root: INFO
+    com.projet.Cloud: DEBUG
+
+---
+# Profil Test
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  redis:
+    host: localhost
+    port: 6379
+
+firebase:
+  connection:
+    timeout: 1000  # Timeout plus court pour les tests
+
+logging:
+  level:
+    root: WARN
+    com.projet.Cloud: INFO
