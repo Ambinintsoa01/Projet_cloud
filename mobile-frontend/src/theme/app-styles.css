@@ -1,0 +1,264 @@
+/* ============================================
+   STYLES GLOBAUX POUR L'APPLICATION
+   Utilise les variables CSS pour le mode clair/sombre
+   ============================================ */
+
+body,
+ion-app,
+ion-page {
+  background: var(--app-background);
+  color: var(--ion-text-color);
+}
+
+/* Reset des backgrounds codés en dur */
+ion-content {
+  --background: var(--app-background) !important;
+}
+
+ion-header {
+  --background: var(--ion-toolbar-background);
+  --border-color: var(--ion-toolbar-border-color);
+}
+
+ion-toolbar {
+  --background: var(--ion-toolbar-background);
+  --border-color: var(--ion-toolbar-border-color);
+  --color: var(--ion-text-color);
+}
+
+/* Icônes harmonisées */
+ion-icon {
+  font-size: 22px;
+  color: currentColor;
+}
+
+ion-button ion-icon,
+ion-fab-button ion-icon {
+  font-size: 22px;
+}
+
+ion-item ion-icon[slot="start"] {
+  font-size: 22px;
+  margin-right: 6px;
+}
+
+ion-toolbar ion-icon {
+  font-size: 22px;
+}
+
+@media (max-width: 480px) {
+  ion-icon {
+    font-size: 20px;
+  }
+}
+
+/* Header mobile : plus lisible et moderne */
+ion-header {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+ion-toolbar {
+  min-height: 56px;
+  padding-top: env(safe-area-inset-top);
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+ion-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: var(--ion-text-color);
+}
+
+ion-title::before {
+  content: '';
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  background: url('/assets/images/logo.svg') no-repeat center center;
+  background-size: contain;
+  vertical-align: -4px;
+}
+
+.app-logo {
+  color: var(--ion-color-primary);
+  font-weight: 900;
+}
+
+.title-sep {
+  color: var(--ion-color-primary);
+  margin: 0 6px;
+}
+
+.app-title {
+  color: var(--ion-text-color);
+  font-weight: 700;
+}
+
+/* Soulignement jaune des titres */
+ion-title,
+.app-title,
+.section-title,
+.page-title,
+h1,
+h2,
+h3 {
+  border-bottom: 2px solid var(--ion-color-primary);
+  padding-bottom: 4px;
+}
+
+/* Soulignement jaune des titres */
+ion-title,
+.app-title,
+.section-title,
+.page-title,
+h1,
+h2,
+h3 {
+  border-bottom: 2px solid var(--ion-color-primary);
+  padding-bottom: 4px;
+}
+
+ion-item {
+  --background: var(--ion-item-background);
+  --border-color: var(--ion-item-border-color);
+  --color: var(--ion-text-color);
+}
+
+ion-card {
+  --background: var(--ion-card-background);
+  background: var(--ion-card-background);
+  color: var(--ion-text-color);
+}
+
+ion-list {
+  background: var(--ion-background-color);
+}
+
+/* Styles pour les headers */
+.header-background {
+  background: linear-gradient(135deg, var(--ion-toolbar-background) 0%, var(--app-background) 100%);
+}
+
+/* Cartes de statistiques */
+.stat-card,
+.stats-card {
+  background: var(--app-surface) !important;
+  border: 1px solid var(--app-border);
+}
+
+/* Cartes de signalements */
+.report-card {
+  background: var(--app-surface) !important;
+  border: 1px solid var(--app-border);
+}
+
+/* Modals */
+ion-modal {
+  --background: var(--app-background);
+}
+
+.modal-content {
+  background: var(--app-background);
+  color: var(--ion-text-color);
+}
+
+/* Boutons */
+ion-button {
+  --color: var(--ion-text-color);
+}
+
+/* Textes */
+.text-primary {
+  color: var(--app-text-primary) !important;
+}
+
+.text-secondary {
+  color: var(--app-text-secondary) !important;
+}
+
+/* Badges de statut */
+.status-badge {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  color: var(--ion-text-color);
+}
+
+/* Inputs */
+ion-input,
+ion-textarea,
+ion-select {
+  --background: var(--app-surface);
+  --color: var(--ion-text-color);
+  --placeholder-color: var(--app-text-secondary);
+}
+
+/* Segments */
+ion-segment {
+  --background: var(--app-surface);
+}
+
+/* Tabs */
+ion-tab-bar {
+  --background: var(--ion-toolbar-background);
+  --border: 1px solid var(--ion-toolbar-border-color);
+}
+
+ion-tab-button {
+  --color: var(--app-text-secondary);
+  --color-selected: var(--ion-color-primary);
+}
+
+/* FAB (Floating Action Buttons) */
+ion-fab-button {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
+}
+
+/* Searchbar */
+ion-searchbar {
+  --background: var(--app-surface);
+  --color: var(--ion-text-color);
+  --placeholder-color: var(--app-text-secondary);
+  --icon-color: var(--app-text-secondary);
+  --border-radius: 12px;
+}
+
+/* Labels */
+ion-label {
+  color: var(--ion-text-color) !important;
+}
+
+ion-note {
+  color: var(--app-text-secondary);
+}
+
+/* Dividers */
+ion-item-divider {
+  --background: var(--app-surface);
+  --color: var(--ion-text-color);
+}
+
+/* Action Sheets */
+ion-action-sheet {
+  --background: var(--app-background);
+  --color: var(--ion-text-color);
+}
+
+/* Toasts */
+ion-toast {
+  --background: var(--app-surface);
+  --color: var(--ion-text-color);
+}
+
+/* Spinners */
+ion-spinner {
+  color: var(--ion-color-primary);
+}
+
+/* Refresh */
+ion-refresher {
+  color: var(--ion-color-primary);
+}
