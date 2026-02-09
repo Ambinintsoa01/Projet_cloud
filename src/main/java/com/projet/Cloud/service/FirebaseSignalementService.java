@@ -417,4 +417,65 @@ public class FirebaseSignalementService {
         
         batch.commit().get();
     }
+    
+    /**
+     * Créer un signalement à partir d'un objet Signalement (pour synchronisation)
+     */
+    public String createSignalement(Signalement signalement) 
+            throws ExecutionException, InterruptedException {
+        
+        log.info("Création signalement dans Firestore depuis PostgreSQL (id={})", signalement.getId());
+        
+        Map<String, Object> signalementData = new HashMap<>();
+        signalementData.put("userId", signalement.getUser().getId().toString());
+        signalementData.put("firebaseUid", signalement.getUser().getFirebaseUid());
+        signalementData.put("userEmail", signalement.getUser().getEmail());
+        signalementData.put("typeId", signalement.getType().getId().toString());
+        signalementData.put("latitude", signalement.getLatitude());
+        signalementData.put("longitude", signalement.getLongitude());
+        signalementData.put("description", signalement.getDescription());
+        signalementData.put("surfaceM2", signalement.getSurfaceM2());
+        signalementData.put("budget", signalement.getBudget());
+        signalementData.put("entrepriseConcernee", signalement.getEntrepriseConcernee());
+        signalementData.put("status", signalement.getStatus() != null ? signalement.getStatus() : "nouveau");
+        signalementData.put("dateSignalement", signalement.getDateSignalement());
+        signalementData.put("createdAt", signalement.getCreatedAt());
+        signalementData.put("updatedAt", signalement.getUpdatedAt());
+        
+        DocumentReference docRef = firestore.collection("signalements").document();
+        docRef.set(signalementData).get();
+        
+        log.info("✅ Signalement créé dans Firebase: {}", docRef.getId());
+        return docRef.getId();
+    }
+    
+    /**
+     * Mettre à jour un signalement à partir d'un objet Signalement (pour synchronisation)
+     */
+    public void updateSignalement(String firebaseId, Signalement signalement) 
+            throws ExecutionException, InterruptedException {
+        
+        log.info("Mise à jour signalement dans Firestore: {}", firebaseId);
+        
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("userId", signalement.getUser().getId().toString());
+        updates.put("firebaseUid", signalement.getUser().getFirebaseUid());
+        updates.put("userEmail", signalement.getUser().getEmail());
+        updates.put("typeId", signalement.getType().getId().toString());
+        updates.put("latitude", signalement.getLatitude());
+        updates.put("longitude", signalement.getLongitude());
+        updates.put("description", signalement.getDescription());
+        updates.put("surfaceM2", signalement.getSurfaceM2());
+        updates.put("budget", signalement.getBudget());
+        updates.put("entrepriseConcernee", signalement.getEntrepriseConcernee());
+        updates.put("status", signalement.getStatus() != null ? signalement.getStatus() : "nouveau");
+        updates.put("updatedAt", LocalDateTime.now());
+        
+        firestore.collection("signalements")
+                .document(firebaseId)
+                .update(updates)
+                .get();
+        
+        log.info("✅ Signalement mis à jour dans Firebase: {}", firebaseId);
+    }
 }

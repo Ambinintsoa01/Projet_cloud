@@ -68,22 +68,23 @@ public class AuthController {
 
     /**
      * Endpoint pour forcer la synchronisation manuelle
-     * Synchronise Firebase → PostgreSQL pour les Signalements et Problèmes
+     * Synchronise bidirectionnellement Firebase ↔ PostgreSQL
      * POST /api/auth/sync
      */
     @PostMapping("/sync")
     public ResponseEntity<Map<String, Object>> forceSync() {
-        log.info("🔄 Synchronisation manuelle déclenchée (Firebase ↔ PostgreSQL)");
+        log.info("🔄 Synchronisation manuelle déclenchée (Firebase ↔ PostgreSQL bidirectionnelle)");
         try {
             syncService.forceSyncNow();
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Synchronisation Firebase → PostgreSQL démarrée");
+            response.put("message", "Synchronisation bidirectionnelle Firebase ↔ PostgreSQL démarrée");
             response.put("timestamp", System.currentTimeMillis());
-            response.put("status", "En attente");
+            response.put("status", "En cours");
+            response.put("direction", "Firebase → PostgreSQL ET PostgreSQL → Firebase");
             
-            log.info("✅ Synchronisation lancée avec succès");
+            log.info("✅ Synchronisation bidirectionnelle lancée avec succès");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("❌ Erreur lors de la synchronisation: {}", e.getMessage(), e);

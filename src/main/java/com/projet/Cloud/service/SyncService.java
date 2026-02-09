@@ -93,11 +93,105 @@ public class SyncService {
     private void syncPendingData() {
         try {
             log.info("Synchronisation des données en attente vers Firebase");
+            
+            // Firebase → PostgreSQL (lecture depuis Firebase)
             syncSignalementTypesFromFirebase();
             syncSignalementsFromFirebase();
             syncProblemeFromFirebase();
+            
+            // PostgreSQL → Firebase (envoi vers Firebase)
+            syncSignalementsToFirebase();
+            syncProblemesToFirebase();
         } catch (Exception e) {
             log.error("Erreur lors de la synchronisation: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Synchronise les signalements de PostgreSQL vers Firebase
+     * Envoie tous les signalements qui n'ont pas encore de firebaseId
+     */
+    @Transactional
+    protected void syncSignalementsToFirebase() {
+        try {
+            log.info("🔄 Synchronisation PostgreSQL → Firebase pour signalements...");
+            
+            // Récupérer tous les signalements
+            List<Signalement> allSignalements = signalementRepository.findAll();
+            int syncedCount = 0;
+            int errorCount = 0;
+            
+            for (Signalement signalement : allSignalements) {
+                try {
+                    String firebaseId = signalement.getFirebaseId();
+                    
+                    if (firebaseId == null || firebaseId.isBlank()) {
+                        // Créer dans Firebase si n'existe pas
+                        firebaseId = firebaseSignalementService.createSignalement(signalement);
+                        signalement.setFirebaseId(firebaseId);
+                        signalementRepository.save(signalement);
+                        log.info("✅ Signalement #{} créé dans Firebase: {}", signalement.getId(), firebaseId);
+                        syncedCount++;
+                    } else {
+                        // Mettre à jour dans Firebase si existe déjà
+                        firebaseSignalementService.updateSignalement(firebaseId, signalement);
+                        log.debug("✅ Signalement #{} mis à jour dans Firebase: {}", signalement.getId(), firebaseId);
+                        syncedCount++;
+                    }
+                } catch (Exception e) {
+                    log.error("❌ Erreur sync signalement #{} vers Firebase: {}", signalement.getId(), e.getMessage());
+                    errorCount++;
+                }
+            }
+            
+            log.info("✅ Synchronisation PostgreSQL → Firebase terminée: {} signalements synchronisés, {} erreurs", 
+                     syncedCount, errorCount);
+        } catch (Exception e) {
+            log.error("❌ Erreur sync signalements PostgreSQL → Firebase: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Synchronise les problèmes de PostgreSQL vers Firebase
+     * Envoie tous les problèmes qui n'ont pas encore de firebaseId
+     */
+    @Transactional
+    protected void syncProblemesToFirebase() {
+        try {
+            log.info("🔄 Synchronisation PostgreSQL → Firebase pour problèmes...");
+            
+            // Récupérer tous les problèmes
+            List<Probleme> allProblemes = problemeRepository.findAll();
+            int syncedCount = 0;
+            int errorCount = 0;
+            
+            for (Probleme probleme : allProblemes) {
+                try {
+                    String firebaseId = probleme.getFirebaseId();
+                    
+                    if (firebaseId == null || firebaseId.isBlank()) {
+                        // Créer dans Firebase si n'existe pas
+                        firebaseId = firebaseProblemeService.createProbleme(probleme);
+                        probleme.setFirebaseId(firebaseId);
+                        problemeRepository.save(probleme);
+                        log.info("✅ Problème #{} créé dans Firebase: {}", probleme.getId(), firebaseId);
+                        syncedCount++;
+                    } else {
+                        // Mettre à jour dans Firebase si existe déjà
+                        firebaseProblemeService.updateProbleme(firebaseId, probleme);
+                        log.debug("✅ Problème #{} mis à jour dans Firebase: {}", probleme.getId(), firebaseId);
+                        syncedCount++;
+                    }
+                } catch (Exception e) {
+                    log.error("❌ Erreur sync problème #{} vers Firebase: {}", probleme.getId(), e.getMessage());
+                    errorCount++;
+                }
+            }
+            
+            log.info("✅ Synchronisation PostgreSQL → Firebase terminée: {} problèmes synchronisés, {} erreurs", 
+                     syncedCount, errorCount);
+        } catch (Exception e) {
+            log.error("❌ Erreur sync problèmes PostgreSQL → Firebase: {}", e.getMessage(), e);
         }
     }
 
