@@ -188,7 +188,6 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet.markercluster'
 import { useReportsStore } from '@/stores/reports.store'
-import { apiService } from '@/services/api.service'
 import {
   mapOutline,
   listOutline,
