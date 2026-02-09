@@ -1,20 +1,25 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { apiService } from '@/services/api.service'
 import { storageService } from '@/services/storage.service'
-import { auth } from '@/services/firebase.service'
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth'
+import { auth, db } from '@/services/firebase.service'
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  updateProfile,
+  onAuthStateChanged
+} from 'firebase/auth'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
 
 export const useAuthStore = defineStore('auth', () => {
   // État
   const user = ref(storageService.getUserData())
-  const token = ref(storageService.getAuthToken())
-  const isAuthenticated = computed(() => !!token.value)
+  const token = ref(null)
+  const isAuthenticated = computed(() => !!auth.currentUser)
   const isLoading = ref(false)
 
   // Getters
   const getUser = computed(() => user.value)
-  const getToken = computed(() => token.value)
+  const getToken = computed(() => auth.currentUser?.accessToken || null)
 
   // Actions
   async function login(email, password) {
@@ -26,34 +31,28 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
 
     try {
-      const data = await apiService.login(email, password)
+      // Connexion avec Firebase Auth uniquement
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      const firebaseUser = userCredential.user
 
-      token.value = data.token
+      // Récupérer les données utilisateur depuis Firestore
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+      const userData = userDoc.exists() ? userDoc.data() : {}
+
       user.value = {
-        id: data.user.id,
-        email: data.user.email,
-        fullName: data.user.username,
-        roles: data.user.roles,
-        expiresAt: data.expiresAt
+        id: firebaseUser.uid,
+        email: firebaseUser.email,
+        fullName: userData.fullName || firebaseUser.displayName || 'Utilisateur',
+        roles: userData.roles || ['USER'],
+        createdAt: userData.createdAt || new Date().toISOString()
       }
 
-      storageService.setAuthToken(token.value)
       storageService.setUserData(user.value)
-
-      // Connecter l'utilisateur à Firebase Auth avec les mêmes credentials
-      try {
-        if (!auth.currentUser) {
-          await signInWithEmailAndPassword(auth, email, password)
-          console.log('✅ Utilisateur connecté à Firebase Auth:', auth.currentUser?.email)
-        }
-      } catch (firebaseError) {
-        console.warn('⚠️ Erreur Firebase Auth (non bloquant):', firebaseError.message)
-        // Non bloquant - l'utilisateur peut quand même utiliser l'app backend
-      }
+      console.log('✅ Utilisateur connecté à Firebase Auth:', firebaseUser.email)
 
       return { success: true }
     } catch (error) {
-      const message = error?.data?.message || error?.message || 'Erreur lors de la connexion'
+      const message = error?.message || 'Erreur lors de la connexion'
       throw new Error(message)
     } finally {
       isLoading.value = false
@@ -77,37 +76,44 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error('Les mots de passe ne correspondent pas')
       }
 
-      const data = await apiService.register({
-        fullName: userData.fullName,
-        email: userData.email,
-        password: userData.password
+      // Créer l'utilisateur dans Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        userData.email, 
+        userData.password
+      )
+      const firebaseUser = userCredential.user
+
+      // Mettre à jour le profil
+      await updateProfile(firebaseUser, {
+        displayName: userData.fullName
       })
 
-      token.value = data.token
+      // Créer le document utilisateur dans Firestore
+      const userProfile = {
+        fullName: userData.fullName,
+        email: userData.email,
+        roles: ['USER'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      await setDoc(doc(db, 'users', firebaseUser.uid), userProfile)
+
       user.value = {
-        id: data.user.id,
-        email: data.user.email,
-        fullName: data.user.username,
-        roles: data.user.roles,
-        expiresAt: data.expiresAt
+        id: firebaseUser.uid,
+        email: firebaseUser.email,
+        fullName: userData.fullName,
+        roles: ['USER'],
+        createdAt: userProfile.createdAt
       }
 
-      storageService.setAuthToken(token.value)
       storageService.setUserData(user.value)
-
-      // Créer l'utilisateur dans Firebase Auth avec les mêmes credentials
-      try {
-        if (!auth.currentUser) {
-          await createUserWithEmailAndPassword(auth, userData.email, userData.password)
-          console.log('✅ Utilisateur créé dans Firebase Auth:', auth.currentUser?.email)
-        }
-      } catch (firebaseError) {
-        console.warn('⚠️ Erreur Firebase Auth (non bloquant):', firebaseError.message)
-      }
+      console.log('✅ Utilisateur créé dans Firebase Auth:', firebaseUser.email)
 
       return { success: true }
     } catch (error) {
-      const message = error?.data?.message || error?.message || 'Erreur lors de l\'inscription'
+      const message = error?.message || 'Erreur lors de l\'inscription'
       throw new Error(message)
     } finally {
       isLoading.value = false
@@ -115,31 +121,54 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    apiService.logout()
-    user.value = null
-    token.value = null
-    
-    // Déconnecter aussi de Firebase Auth
     try {
-      if (auth.currentUser) {
-        await auth.signOut()
-        console.log('✅ Déconnecté de Firebase Auth')
-      }
-    } catch (firebaseError) {
-      console.warn('⚠️ Erreur déconnexion Firebase:', firebaseError.message)
+      await auth.signOut()
+      user.value = null
+      token.value = null
+      storageService.removeAuthToken()
+      storageService.removeUserData()
+      console.log('✅ Déconnecté de Firebase Auth')
+    } catch (error) {
+      console.warn('⚠️ Erreur déconnexion Firebase:', error.message)
+      throw error
     }
   }
 
   // Initialisation depuis localStorage
   function initializeFromStorage() {
-    const storedToken = storageService.getAuthToken()
     const storedUser = storageService.getUserData()
 
-    if (storedToken && storedUser) {
-      token.value = storedToken
+    if (storedUser && auth.currentUser) {
       user.value = storedUser
     }
   }
+
+  // Observer l'état d'authentification Firebase
+  onAuthStateChanged(auth, async (firebaseUser) => {
+    if (firebaseUser) {
+      // Utilisateur connecté - récupérer les données depuis Firestore
+      try {
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+        const userData = userDoc.exists() ? userDoc.data() : {}
+
+        user.value = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email,
+          fullName: userData.fullName || firebaseUser.displayName || 'Utilisateur',
+          roles: userData.roles || ['USER'],
+          createdAt: userData.createdAt || new Date().toISOString()
+        }
+        
+        storageService.setUserData(user.value)
+      } catch (error) {
+        console.warn('⚠️ Erreur récupération données utilisateur:', error.message)
+      }
+    } else {
+      // Utilisateur déconnecté
+      user.value = null
+      token.value = null
+    }
+  })
 
   // Initialiser au chargement du store
   initializeFromStorage()
@@ -162,3 +191,4 @@ export const useAuthStore = defineStore('auth', () => {
     initializeFromStorage
   }
 })
+

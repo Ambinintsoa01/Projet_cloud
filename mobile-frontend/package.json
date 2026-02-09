@@ -20,6 +20,7 @@
   "author": "MrRojo Team",
   "license": "ISC",
   "dependencies": {
+    "@capacitor/android": "^8.0.2",
     "@capacitor/camera": "^8.0.0",
     "@capacitor/cli": "^7.4.5",
     "@capacitor/core": "^8.0.2",
@@ -29,6 +30,7 @@
     "@ionic/vue-router": "^8.7.17",
     "@vue-leaflet/vue-leaflet": "^0.10.1",
     "axios": "^1.13.3",
+    "firebase": "^12.9.0",
     "ionicons": "^8.0.13",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
@@ -38,6 +40,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.4",
+    "@vue/cli-service": "5.0.9",
     "vite": "^5.4.10"
   }
 }

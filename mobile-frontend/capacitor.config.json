@@ -19,11 +19,6 @@
     }
   },
   "server": {
-    "hostname": "localhost",
-    "androidScheme": "https",
-    "allowNavigation": [
-      "http://172.20.10.3:8080",
-      "http://172.20.*:8080"
-    ]
+    "androidScheme": "https"
   }
 }
