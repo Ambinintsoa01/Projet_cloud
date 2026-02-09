@@ -436,7 +436,6 @@ public class FirebaseSignalementService {
         signalementData.put("description", signalement.getDescription());
         signalementData.put("surfaceM2", signalement.getSurfaceM2());
         signalementData.put("budget", signalement.getBudget());
-        signalementData.put("entrepriseConcernee", signalement.getEntrepriseConcernee());
         signalementData.put("status", signalement.getStatus() != null ? signalement.getStatus() : "nouveau");
         signalementData.put("dateSignalement", signalement.getDateSignalement());
         signalementData.put("createdAt", signalement.getCreatedAt());
@@ -467,7 +466,6 @@ public class FirebaseSignalementService {
         updates.put("description", signalement.getDescription());
         updates.put("surfaceM2", signalement.getSurfaceM2());
         updates.put("budget", signalement.getBudget());
-        updates.put("entrepriseConcernee", signalement.getEntrepriseConcernee());
         updates.put("status", signalement.getStatus() != null ? signalement.getStatus() : "nouveau");
         updates.put("updatedAt", LocalDateTime.now());
         
