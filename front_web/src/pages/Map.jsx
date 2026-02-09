@@ -234,11 +234,8 @@ export default function Map() {
     try {
       setLoading(true);
       setError(null);
-      // Utiliser getAllSignalements qui gère automatiquement Firebase/Postgres
-      const data = await signalementService.getAllSignalements({ 
-        preferFirebase: true,
-        syncOnOnline: true 
-      });
+      // Charger depuis PostgreSQL (cache local si offline)
+      const data = await signalementService.getAllSignalements();
       console.log("✅ Signalements chargés:", data);
       setSignalements(Array.isArray(data) ? data : []);
     } catch (err) {

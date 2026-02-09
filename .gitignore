@@ -1,0 +1,9 @@
+/node_modules
+/front_web/node_modules
+/mobile-frontend/node_modules
+/target
+/mobile-frontend/dist
+/mobile-frontend/.idea
+/.idea
+/mobile-frontend/dist
+/mobile-frontend/dist

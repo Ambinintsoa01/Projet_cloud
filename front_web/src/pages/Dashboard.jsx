@@ -59,11 +59,19 @@ export default function Dashboard() {
   }, []);
 
   const handleSync = async () => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      setSyncStatus('⚠️ Hors ligne: synchronisation impossible');
+      setTimeout(() => {
+        setSyncStatus('');
+      }, 3000);
+      return;
+    }
+
     setSyncing(true);
     setSyncStatus('Synchronisation en cours...');
     
     try {
-      const response = await authService.forceSync();
+      const response = await authService.forceSync(60000);
       setSyncStatus('✅ Synchronisation réussie');
       setLastSync(new Date().toLocaleTimeString('fr-FR'));
       
@@ -81,8 +89,28 @@ export default function Dashboard() {
         setSyncStatus('');
       }, 3000);
     } catch (error) {
-      setSyncStatus('❌ Erreur de synchronisation');
-      console.error('Erreur sync:', error);
+      const status = error?.status || error?.response?.status;
+      const message =
+        error?.data?.message ||
+        error?.response?.data?.message ||
+        error?.message;
+
+      if (error?.code === 'ECONNABORTED') {
+        setSyncStatus('⏱️ Synchronisation trop longue (timeout)');
+      } else if (status === 404) {
+        setSyncStatus('❌ Endpoint /api/auth/sync introuvable');
+      } else if (status === 401) {
+        setSyncStatus('🔒 Non autorisé (token manquant/expiré)');
+      } else if (status === 403) {
+        setSyncStatus('⛔ Accès refusé');
+      } else if (status >= 500) {
+        setSyncStatus('💥 Erreur serveur pendant la synchronisation');
+      } else if (message) {
+        setSyncStatus(`❌ ${message}`);
+      } else {
+        setSyncStatus('❌ Erreur de synchronisation');
+      }
+      console.error('Erreur sync:', error?.response?.data || error);
       setTimeout(() => {
         setSyncStatus('');
       }, 3000);

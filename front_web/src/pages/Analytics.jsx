@@ -28,10 +28,7 @@ function Analytics() {
       setLoading(true);
       setError(null);
       
-      const signalements = await signalementService.getAllSignalements({
-        preferFirebase: true,
-        syncOnOnline: true
-      });
+      const signalements = await signalementService.getAllSignalements();
 
       if (!Array.isArray(signalements)) {
         setStats({

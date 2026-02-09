@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ⚠️ RÈGLES DE DÉVELOPPEMENT - NE PAS UTILISER EN PRODUCTION ⚠️
+    // Ces règles permettent à tous les utilisateurs authentifiés de tout faire
+    
+    // Collection: problemes (accès ouvert pour le développement)
+    match /problemes/{problemeId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Collection: signalements (accès ouvert pour le développement)
+    match /signalements/{signalementId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Collection: signalementTypes (lecture publique)
+    match /signalementTypes/{typeId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Collection: users (accès ouvert pour le développement)
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Collection: roles (lecture publique)
+    match /roles/{roleId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Tout le reste: accès ouvert pour le développement
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

@@ -3,12 +3,16 @@ package com.projet.Cloud.service;
 import com.google.cloud.Timestamp;
 import com.projet.Cloud.model.Probleme;
 import com.projet.Cloud.model.Signalement;
-import com.projet.Cloud.model.SignalementType;
 import com.projet.Cloud.model.User;
+import com.projet.Cloud.model.Role;
 import com.projet.Cloud.repository.ProblemeRepository;
+import com.projet.Cloud.repository.RoleRepository;
 import com.projet.Cloud.repository.SignalementRepository;
 import com.projet.Cloud.repository.SignalementTypeRepository;
 import com.projet.Cloud.repository.UserRepository;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.UserRecord;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +30,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Service de synchronisation entre Firebase et la base locale
@@ -43,6 +48,7 @@ public class SyncService {
     private final SignalementTypeRepository signalementTypeRepository;
     private final ProblemeRepository problemeRepository;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     
     private boolean wasOffline = false;
 
@@ -52,13 +58,15 @@ public class SyncService {
                       SignalementRepository signalementRepository,
                       SignalementTypeRepository signalementTypeRepository,
                       ProblemeRepository problemeRepository,
-                      UserRepository userRepository) {
+                      UserRepository userRepository,
+                      RoleRepository roleRepository) {
         this.firebaseSignalementService = firebaseSignalementService;
         this.firebaseProblemeService = firebaseProblemeService;
         this.signalementRepository = signalementRepository;
         this.signalementTypeRepository = signalementTypeRepository;
         this.problemeRepository = problemeRepository;
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
     }
 
     /**
@@ -122,7 +130,7 @@ public class SyncService {
 
                 // Utiliser une requête SQL native pour INSERT ou UPDATE avec ID spécifique
                 // PostgreSQL: INSERT ... ON CONFLICT DO UPDATE
-                int updated = entityManager.createNativeQuery(
+                entityManager.createNativeQuery(
                     "INSERT INTO type (id, libelle, icon_color, icon_symbol) " +
                     "VALUES (:id, :libelle, :iconColor, :iconSymbol) " +
                     "ON CONFLICT (id) DO UPDATE SET " +
@@ -136,7 +144,6 @@ public class SyncService {
                 .setParameter("iconSymbol", iconSymbol)
                 .executeUpdate();
 
-                log.debug("✅ Type {} synchronisé: {}", typeId, libelle);
                 syncedCount++;
             }
 
@@ -167,11 +174,11 @@ public class SyncService {
                 Signalement signalement = existingOpt.orElseGet(Signalement::new);
                 signalement.setFirebaseId(firebaseId);
 
-                Long userId = extractUserId(data.get("userId"));
+                User resolvedUser = resolveUser(data);
                 Long typeId = extractLong(data.get("typeId"));
 
-                if (userId != null) {
-                    userRepository.findById(userId).ifPresent(signalement::setUser);
+                if (resolvedUser != null) {
+                    signalement.setUser(resolvedUser);
                 }
 
                 if (typeId != null) {
@@ -217,7 +224,7 @@ public class SyncService {
     @Transactional
     protected void syncProblemeFromFirebase() {
         try {
-            List<Map<String, Object>> firebaseProblemes = firebaseProblemeService.getAllProblemes();
+            List<Map<String, Object>> firebaseProblemes = firebaseProblemeService.getOpenProblemes();
             int syncedCount = 0;
 
             for (Map<String, Object> data : firebaseProblemes) {
@@ -235,19 +242,13 @@ public class SyncService {
                 Probleme probleme = existingOpt.orElseGet(Probleme::new);
                 probleme.setFirebaseId(firebaseId);
 
-                Long userId = extractUserId(data.get("userId"));
-                if (userId == null) {
+                User resolvedUser = resolveUser(data);
+                if (resolvedUser == null) {
                     log.warn("⚠️ Problème {} sans userId valide", firebaseId);
                     continue;
                 }
 
-                Optional<User> userOpt = userRepository.findById(userId);
-                if (userOpt.isEmpty()) {
-                    log.warn("⚠️ Utilisateur {} introuvable", userId);
-                    continue;
-                }
-
-                probleme.setUser(userOpt.get());
+                probleme.setUser(resolvedUser);
 
                 // Type est optionnel
                 Long typeId = extractLong(data.get("typeId"));
@@ -255,10 +256,15 @@ public class SyncService {
                     signalementTypeRepository.findById(typeId).ifPresent(probleme::setType);
                 }
 
+                String status = getAsString(data.get("status"));
+                if (status != null && !"ouvert".equalsIgnoreCase(status)) {
+                    continue;
+                }
+
                 probleme.setLatitude(extractDouble(data.get("latitude")));
                 probleme.setLongitude(extractDouble(data.get("longitude")));
                 probleme.setDescription(getAsString(data.get("description")));
-                probleme.setStatus(getAsString(data.get("status")) != null ? getAsString(data.get("status")) : "ouvert");
+                probleme.setStatus(status != null ? status : "ouvert");
 
                 LocalDateTime createdAt = toLocalDateTime(data.get("createdAt"));
                 if (createdAt != null) {
@@ -277,6 +283,97 @@ public class SyncService {
             log.info("✅ Synchronisation problèmes terminée: {} enregistrements synced", syncedCount);
         } catch (Exception e) {
             log.error("❌ Erreur sync problèmes Firebase -> Postgres: {}", e.getMessage(), e);
+        }
+    }
+
+    private User resolveUser(Object userObj) {
+        if (userObj == null) return null;
+
+        if (userObj instanceof Number) {
+            Long id = ((Number) userObj).longValue();
+            return userRepository.findById(id).orElse(null);
+        }
+
+        if (userObj instanceof String) {
+            String raw = (String) userObj;
+            Long parsedId = parseLongSafe(raw);
+            if (parsedId != null) {
+                return userRepository.findById(parsedId).orElse(null);
+            }
+            return resolveOrCreateFirebaseUser(raw);
+        }
+
+        if (userObj instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) userObj;
+            Object id = map.get("id");
+            if (id == null) id = map.get("userId");
+            if (id instanceof Number) {
+                return userRepository.findById(((Number) id).longValue()).orElse(null);
+            }
+            if (id instanceof String) {
+                Long parsedId = parseLongSafe((String) id);
+                if (parsedId != null) {
+                    return userRepository.findById(parsedId).orElse(null);
+                }
+                User byFirebase = resolveOrCreateFirebaseUser((String) id);
+                if (byFirebase != null) return byFirebase;
+            }
+            Object firebaseUid = map.get("firebaseUid");
+            if (firebaseUid instanceof String) {
+                User byFirebase = resolveOrCreateFirebaseUser((String) firebaseUid);
+                if (byFirebase != null) return byFirebase;
+            }
+            Object email = map.get("email");
+            if (email instanceof String) {
+                return userRepository.findByEmail((String) email).orElse(null);
+            }
+        }
+
+        return null;
+    }
+
+    private User resolveOrCreateFirebaseUser(String firebaseUid) {
+        if (firebaseUid == null || firebaseUid.isBlank()) return null;
+
+        User existing = userRepository.findByFirebaseUid(firebaseUid).orElse(null);
+        if (existing != null) return existing;
+
+        try {
+            UserRecord record = FirebaseAuth.getInstance().getUser(firebaseUid);
+            if (record.getEmail() != null && !record.getEmail().isBlank()) {
+                User byEmail = userRepository.findByEmail(record.getEmail()).orElse(null);
+                if (byEmail != null) {
+                    if (byEmail.getFirebaseUid() == null || byEmail.getFirebaseUid().isBlank()) {
+                        byEmail.setFirebaseUid(firebaseUid);
+                        return userRepository.save(byEmail);
+                    }
+                    return byEmail;
+                }
+            }
+
+            User user = new User();
+            user.setFirebaseUid(firebaseUid);
+            user.setEmail(record.getEmail());
+
+            String displayName = record.getDisplayName();
+            if (displayName == null || displayName.isBlank()) {
+                String fallback = record.getEmail() != null
+                    ? record.getEmail().split("@")[0]
+                    : "firebase_" + firebaseUid.substring(0, Math.min(8, firebaseUid.length()));
+                user.setUsername(fallback);
+            } else {
+                user.setUsername(displayName);
+            }
+
+            Role userRole = roleRepository.findByName("USER").orElse(null);
+            if (userRole != null) {
+                user.setRoles(Set.of(userRole));
+            }
+
+            return userRepository.save(user);
+        } catch (FirebaseAuthException e) {
+            log.warn("⚠️ Impossible de récupérer l'utilisateur Firebase {}: {}", firebaseUid, e.getMessage());
+            return null;
         }
     }
 
@@ -376,7 +473,15 @@ public class SyncService {
     public void forceSyncNow() {
         if (isInternetAvailable()) {
             log.info("Synchronisation forcée démarrée");
-            syncPendingData();
+            Thread syncThread = new Thread(() -> {
+                try {
+                    syncPendingData();
+                } catch (Exception e) {
+                    log.error("Erreur lors de la synchronisation forcée: {}", e.getMessage(), e);
+                }
+            }, "manual-sync");
+            syncThread.setDaemon(true);
+            syncThread.start();
         } else {
             log.warn("Impossible de synchroniser - Pas de connexion internet");
         }

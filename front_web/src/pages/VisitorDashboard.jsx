@@ -185,8 +185,8 @@ export default function VisitorDashboard() {
       setLoading(true);
       setError(null);
 
-      // Charger les signalements - utiliser preferFirebase: false pour les visiteurs
-      const signalementsResponse = await signalementService.getAllSignalements({ preferFirebase: false });
+      // Charger les signalements (PostgreSQL uniquement côté web)
+      const signalementsResponse = await signalementService.getAllSignalements();
       const signalementsList = Array.isArray(signalementsResponse) ? signalementsResponse : (signalementsResponse?.data || []);
       setSignalements(signalementsList);
 

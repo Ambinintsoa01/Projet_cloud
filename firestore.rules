@@ -1,0 +1,92 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function hasRole(role) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny([role]);
+    }
+    
+    function isManager() {
+      return hasRole('MANAGER') || hasRole('ADMIN');
+    }
+    
+    function isAdmin() {
+      return hasRole('ADMIN');
+    }
+
+    // Collection: problemes
+    // Accès simplifié (auth requis) pour permettre le fonctionnement mobile
+    match /problemes/{problemeId} {
+      // Lecture: tout utilisateur authentifié
+      allow read: if isAuthenticated();
+      
+      // Création: utilisateurs authentifiés uniquement
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.status == 'ouvert';
+      
+      // Mise à jour: utilisateurs authentifiés (conversion mobile)
+      allow update: if isAuthenticated();
+      
+      // Suppression: interdite
+      allow delete: if false;
+    }
+
+    // Collection: signalements
+    // Accès simplifié (auth requis)
+    match /signalements/{signalementId} {
+      // Lecture: tous les utilisateurs authentifiés
+      allow read: if isAuthenticated();
+      
+      // Création: utilisateurs authentifiés
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.status == 'nouveau';
+      
+      // Mise à jour: utilisateurs authentifiés
+      allow update: if isAuthenticated();
+      
+      // Suppression: interdite
+      allow delete: if false;
+    }
+
+    // Collection: signalementTypes
+    // Lecture publique, écriture admin uniquement
+    match /signalementTypes/{typeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Collection: users
+    // Lecture: utilisateur propriétaire ou admin
+    match /users/{userId} {
+      allow read: if isAuthenticated() && 
+                     (userId == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Collection: roles
+    // Lecture publique (pour vérification des rôles), écriture admin
+    match /roles/{roleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Règle par défaut: bloquer tout accès
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

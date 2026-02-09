@@ -11,7 +11,7 @@ import {
   serverTimestamp,
   getDoc
 } from 'firebase/firestore'
-import { signInWithEmailAndPassword } from 'firebase/auth'
+import { signInAnonymously, signInWithEmailAndPassword } from 'firebase/auth'
 import { db, auth } from '@/services/firebase.service'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -22,33 +22,27 @@ export function useProblemes() {
   const authStore = useAuthStore()
 
   /**
-   * Assure que l'utilisateur est connecté
-   * Utilise OBLIGATOIREMENT l'ID utilisateur du backend (authStore)
+   * Assure que l'utilisateur est connecté à Firebase
+   * Utilise l'UID Firebase pour respecter les règles Firestore
    */
   const ensureAuth = async () => {
-    // Vérifier que l'utilisateur est connecté au backend
-    if (!authStore.user?.id) {
-      console.error('❌ Utilisateur non connecté au backend')
-      throw new Error('Veuillez vous connecter d\'abord')
-    }
-
-    console.log('✅ Utilisation de l\'ID utilisateur backend:', authStore.user.id)
-    
-    // Optionnel : vérifier que Firebase Auth est aussi connecté
     if (!auth.currentUser) {
       try {
-        // Connecter à Firebase avec les mêmes credentials si disponibles
-        if (authStore.user?.email) {
-          console.log('🔐 Connexion Firebase Auth avec email:', authStore.user.email)
-          // Note: On ne peut pas accéder au mot de passe, donc on compte sur signInWithEmailAndPassword
-          // qui devrait déjà être fait lors du login du store
+        if (authStore.user?.email && authStore.user?.password) {
+          await signInWithEmailAndPassword(auth, authStore.user.email, authStore.user.password)
+        } else {
+          await signInAnonymously(auth)
         }
       } catch (err) {
-        console.warn('⚠️ Firebase Auth non connecté (non bloquant):', err.message)
+        console.warn('⚠️ Firebase Auth non connecté, tentative anonyme échouée:', err.message)
       }
     }
 
-    return { uid: authStore.user.id.toString() }
+    if (!auth.currentUser) {
+      throw new Error('Connexion Firebase requise')
+    }
+
+    return { uid: auth.currentUser.uid }
   }
 
   /**
@@ -63,10 +57,15 @@ export function useProblemes() {
     try {
       // S'assurer que l'utilisateur est authentifié (OBLIGATOIRE)
       const currentUser = await ensureAuth()
-      const userId = currentUser.uid
+      const firebaseUid = currentUser.uid
+      const sqlUserId = authStore.user?.id
+      const userId = sqlUserId ? String(sqlUserId) : firebaseUid
+      const userEmail = authStore.user?.email || auth.currentUser?.email || null
       
       const problemeData = {
-        userId: parseInt(userId), // Assurer que c'est un nombre
+        userId: userId,
+        firebaseUid: firebaseUid,
+        userEmail: userEmail,
         latitude: data.latitude,
         longitude: data.longitude,
         description: data.description,
@@ -177,28 +176,59 @@ export function useProblemes() {
     error.value = null
 
     try {
-      const userId = authStore.user?.id || auth.currentUser?.uid
-      if (!userId) {
+      const sqlUserId = authStore.user?.id ? String(authStore.user.id) : null
+      const firebaseUid = auth.currentUser?.uid || null
+
+      if (!sqlUserId && !firebaseUid) {
         console.warn('⚠️ Utilisateur non connecté')
         return []
       }
 
       const problemesRef = collection(db, 'problemes')
-      const q = query(
-        problemesRef,
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
-      )
-      const snapshot = await getDocs(q)
+      const results = []
+      const seen = new Set()
 
-      const myProblemes = snapshot.docs
-        .filter(doc => !doc.data()._isExample)
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate?.() || null,
-          updatedAt: doc.data().updatedAt?.toDate?.() || null
-        }))
+      if (sqlUserId) {
+        const qSql = query(
+          problemesRef,
+          where('userId', '==', sqlUserId),
+          orderBy('createdAt', 'desc')
+        )
+        const snapshotSql = await getDocs(qSql)
+        snapshotSql.docs.forEach((doc) => {
+          if (doc.data()._isExample) return
+          if (seen.has(doc.id)) return
+          seen.add(doc.id)
+          results.push({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate?.() || null,
+            updatedAt: doc.data().updatedAt?.toDate?.() || null
+          })
+        })
+      }
+
+      if (firebaseUid && firebaseUid !== sqlUserId) {
+        const qUid = query(
+          problemesRef,
+          where('userId', '==', firebaseUid),
+          orderBy('createdAt', 'desc')
+        )
+        const snapshotUid = await getDocs(qUid)
+        snapshotUid.docs.forEach((doc) => {
+          if (doc.data()._isExample) return
+          if (seen.has(doc.id)) return
+          seen.add(doc.id)
+          results.push({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate?.() || null,
+            updatedAt: doc.data().updatedAt?.toDate?.() || null
+          })
+        })
+      }
+
+      const myProblemes = results
 
       console.log('✅ Mes problèmes:', myProblemes.length)
       return myProblemes

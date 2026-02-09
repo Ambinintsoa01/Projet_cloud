@@ -184,9 +184,11 @@ export const authService = {
   },
 
   // Fonction pour forcer la synchronisation
-  forceSync: async () => {
+  forceSync: async (timeoutMs = 60000) => {
     try {
-      const response = await apiClient.post('/api/auth/sync');
+      const response = await apiClient.post('/api/auth/sync', null, {
+        timeout: timeoutMs,
+      });
       return response.data;
     } catch (error) {
       throw error.response || error;
@@ -324,11 +326,6 @@ export const problemService = {
   }
 };
 
-const getAllSignalementsFirebase = async () => {
-  const response = await apiClient.get('/api/firebase/signalements');
-  return response.data;
-};
-
 const getAllSignalementsLocal = async () => {
   const response = await apiClient.get('/api/signalements');
   return response.data;
@@ -356,46 +353,12 @@ export const signalementService = {
     }
   },
 
-  // Récupérer tous les signalements (Firebase si en ligne, Postgres si offline)
-  getAllSignalements: async (options = {}) => {
-    const { preferFirebase = false, syncOnOnline = true } = options;
+  // Récupérer tous les signalements (PostgreSQL uniquement, cache local en mode offline)
+  getAllSignalements: async () => {
     const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
     if (!isOnline) {
       return readCache(CACHE_KEYS.signalements, []);
-    }
-
-    if (preferFirebase && isOnline) {
-      if (syncOnOnline) {
-        try {
-          await authService.forceSync();
-        } catch (e) {
-          // Ne pas bloquer si la sync échoue
-        }
-      }
-
-      try {
-        const data = await getAllSignalementsFirebase();
-        // Normaliser les données Firebase pour inclure 'id'
-        const normalizedData = (Array.isArray(data) ? data : []).map(item => ({
-          ...item,
-          id: item.id || item.problemeId || item.firebaseId
-        }));
-        writeCache(CACHE_KEYS.signalements, normalizedData);
-        return normalizedData;
-      } catch (error) {
-        // Fallback local si Firebase indisponible
-        try {
-          const data = await getAllSignalementsLocal();
-          writeCache(CACHE_KEYS.signalements, data);
-          return data;
-        } catch (fallbackError) {
-          if (shouldUseCache(fallbackError) || shouldUseCache(error)) {
-            return readCache(CACHE_KEYS.signalements, []);
-          }
-          throw fallbackError.response || fallbackError;
-        }
-      }
     }
 
     try {

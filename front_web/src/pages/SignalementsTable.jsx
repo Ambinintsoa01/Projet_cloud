@@ -26,7 +26,7 @@ export default function SignalementsTable() {
       setError(null);
 
       // Charger les signalements
-      const signalementsResponse = await signalementService.getAllSignalements({ preferFirebase: true });
+      const signalementsResponse = await signalementService.getAllSignalements();
       const signalementsList = Array.isArray(signalementsResponse) ? signalementsResponse : (signalementsResponse?.data || []);
       setSignalements(signalementsList);
 

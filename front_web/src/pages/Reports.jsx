@@ -23,11 +23,11 @@ export default function Reports() {
 
     const handleOnline = () => {
       setIsOnline(true);
-      fetchReports({ syncOnOnline: true });
+      fetchReports();
     };
     const handleOffline = () => {
       setIsOnline(false);
-      fetchReports({ preferFirebase: false, syncOnOnline: false });
+      fetchReports();
     };
 
     window.addEventListener('online', handleOnline);
@@ -64,11 +64,11 @@ export default function Reports() {
     }
   };
 
-  const fetchReports = async (options = {}) => {
+  const fetchReports = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await signalementService.getAllSignalements(options);
+      const response = await signalementService.getAllSignalements();
       const list = Array.isArray(response) ? response : (response?.data || []);
       setReports(list);
     } catch (err) {
@@ -256,7 +256,7 @@ export default function Reports() {
           <h1>Liste des signalements</h1>
           <p>Suivez tous les signalements déclarés dans le système</p>
           <div className={`connection-badge ${isOnline ? 'online' : 'offline'}`}>
-            {isOnline ? 'Connecté (Firebase)' : 'Hors ligne (Postgres local)'}
+            {isOnline ? 'Connecté (PostgreSQL)' : 'Hors ligne (cache local)'}
           </div>
         </div>
         <button className="refresh-btn" onClick={fetchReports} disabled={loading}>
