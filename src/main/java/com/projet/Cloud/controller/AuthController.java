@@ -79,9 +79,9 @@ public class AuthController {
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Synchronisation bidirectionnelle Firebase ↔ PostgreSQL démarrée");
+            response.put("message", "Synchronisation bidirectionnelle Firebase ↔ PostgreSQL terminée");
             response.put("timestamp", System.currentTimeMillis());
-            response.put("status", "En cours");
+            response.put("status", "Terminée");
             response.put("direction", "Firebase → PostgreSQL ET PostgreSQL → Firebase");
             
             log.info("✅ Synchronisation bidirectionnelle lancée avec succès");

@@ -375,6 +375,11 @@ export default function Map() {
   // Multiple tile providers for fallback
   const tileProviders = [
     {
+      name: "Local Tileserver",
+      url: "http://localhost:8090/styles/basic-preview/{z}/{x}/{y}.png",
+      attribution: '&copy; Local tileserver',
+    },
+    {
       name: "OpenStreetMap",
       url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       attribution:

@@ -36,7 +36,7 @@ public class FirebaseAuthService implements AuthService {
         // 1️⃣ Créer l’utilisateur en base
         User user = new User();
         user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
+        user.setEmail(normalizeEmail(request.getEmail()));
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         // Assign default role USER when registering via Firebase
         String requestedRole = request.getRole();
@@ -87,7 +87,7 @@ public class FirebaseAuthService implements AuthService {
     @Override
     public AuthResponse authenticate(LoginRequest request) {
         // Récupérer l'utilisateur ou lever une exception
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmailIgnoreCase(normalizeEmail(request.getEmail()))
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
 
         // Vérifier le mot de passe
@@ -137,6 +137,13 @@ public class FirebaseAuthService implements AuthService {
         }
 
         FirebaseAuth.getInstance().updateUser(updateRequest);
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null) {
+            return null;
+        }
+        return email.trim().toLowerCase();
     }
 
 

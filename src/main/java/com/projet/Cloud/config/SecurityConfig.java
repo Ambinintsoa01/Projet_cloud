@@ -9,6 +9,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -79,10 +80,11 @@ public class SecurityConfig {
             .sessionManagement(s ->
                 s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/public/**", "/api/auth/**", "/api/init-firestore", "/actuator/**").permitAll()
+                .requestMatchers("/public/**", "/api/auth/login", "/api/auth/register", "/api/auth/sync", "/api/init-firestore", "/actuator/**").permitAll()
                 .requestMatchers("/api/signalement-types", "/api/problemes/ouverts", "/api/signalements", "/api/problemes").permitAll()
-                .requestMatchers("PUT", "/api/signalements/**").permitAll()
-                .requestMatchers("/api/secure", "/api/auth/user/**").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/signalements/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/problemes/*/convert").permitAll()
+                .requestMatchers("/api/secure", "/api/auth/user/**", "/api/auth/users", "/api/auth/users/blocked").authenticated()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(

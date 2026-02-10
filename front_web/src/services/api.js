@@ -80,18 +80,19 @@ apiClient.interceptors.response.use(
   (error) => {
     const resp = error.response;
 
-    // Si 401, rejeter mais laisser les services gérer le fallback à la cache
-    // (au lieu de rediriger immédiatement vers la page de login)
+    // Si 401, gérer la session selon le contexte
     if (resp && resp.status === 401) {
       const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
-      // Uniquement rediriger si vraiment online ET si c'est une tentative de login/register
-      const isAuthEndpoint = (error.config?.url || '').includes('/auth/login') || (error.config?.url || '').includes('/auth/register');
-      if (!isOffline && isAuthEndpoint) {
+      const url = error.config?.url || '';
+      const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
+
+      // Si online et 401 sur endpoint protégé => session invalide, forcer reconnexion
+      if (!isOffline && !isAuthEndpoint) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/';
       }
-      // Pour les autres endpoints, laisser le fallback à la cache se faire
+
       return Promise.reject(resp);
     }
 

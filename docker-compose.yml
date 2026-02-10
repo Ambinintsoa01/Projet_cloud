@@ -12,9 +12,9 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./init-db.sql:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5433:5432"
+      - "5432:5432"
     networks:
       - cloud-network
     healthcheck:
@@ -84,9 +84,9 @@ services:
       SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
 
       # Redis Configuration
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      SPRING_REDIS_PASSWORD: redis_pass
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: redis_pass
 
       # JWT Configuration
       JWT_SECRET: your-super-secret-jwt-key-change-this-in-production-minimum-256-bits
@@ -114,7 +114,7 @@ services:
     volumes:
       - ./firebase-credentials.json:/app/firebase/firebase-credentials.json:ro
     ports:
-      - "8083:8080"
+      - "8080:8080"
     networks:
       - cloud-network
     healthcheck:

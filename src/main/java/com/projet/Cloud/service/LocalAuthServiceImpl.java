@@ -36,12 +36,12 @@ public class LocalAuthServiceImpl implements LocalAuthService {
 
     @Override
     public Optional <User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
+        return userRepository.findByEmailIgnoreCase(normalizeEmail(email));
     }
 
     @Override
     public AuthResponse authenticate(LoginRequest request) {
-        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
+        Optional<User> userOpt = userRepository.findByEmailIgnoreCase(normalizeEmail(request.getEmail()));
         if (userOpt.isEmpty() || !passwordEncoder.matches(request.getPassword(), userOpt.get().getPassword())) {
             throw new RuntimeException("Email ou mot de passe incorrect");
         }
@@ -75,7 +75,7 @@ public class LocalAuthServiceImpl implements LocalAuthService {
     @Override
     public AuthResponse register(RegisterRequest request) {
         User user = new User();
-        user.setEmail(request.getEmail());
+        user.setEmail(normalizeEmail(request.getEmail()));
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
@@ -120,7 +120,7 @@ public class LocalAuthServiceImpl implements LocalAuthService {
         }
 
         if (request.getEmail() != null && !request.getEmail().isEmpty()) {
-            user.setEmail(request.getEmail());
+            user.setEmail(normalizeEmail(request.getEmail()));
         }
 
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
@@ -128,6 +128,13 @@ public class LocalAuthServiceImpl implements LocalAuthService {
         }
 
         return userRepository.save(user);
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null) {
+            return null;
+        }
+        return email.trim().toLowerCase();
     }
 
 

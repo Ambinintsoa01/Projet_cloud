@@ -565,19 +565,23 @@ public class SyncService {
      * Force la synchronisation manuelle
      */
     public void forceSyncNow() {
-        if (isInternetAvailable()) {
-            log.info("Synchronisation forcée démarrée");
-            Thread syncThread = new Thread(() -> {
-                try {
-                    syncPendingData();
-                } catch (Exception e) {
-                    log.error("Erreur lors de la synchronisation forcée: {}", e.getMessage(), e);
-                }
-            }, "manual-sync");
-            syncThread.setDaemon(true);
-            syncThread.start();
-        } else {
+        if (!isInternetAvailable()) {
             log.warn("Impossible de synchroniser - Pas de connexion internet");
+            throw new RuntimeException("Pas de connexion internet");
+        }
+
+        ensureFirebaseAvailable();
+
+        log.info("Synchronisation forcée démarrée");
+        syncPendingData();
+    }
+
+    private void ensureFirebaseAvailable() {
+        try {
+            firebaseSignalementService.getAllSignalementTypes();
+        } catch (Exception e) {
+            log.error("Firebase indisponible (credentials invalides ou accès refusé): {}", e.getMessage());
+            throw new RuntimeException("Firebase indisponible (credentials invalides ou accès refusé)");
         }
     }
 }

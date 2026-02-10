@@ -64,8 +64,7 @@ public class HybridAuthService implements AuthService {
 
     @Override
     public AuthResponse authenticate(LoginRequest request) {
-
-        String username = request.getEmail();
+        String username = normalizeEmail(request.getEmail());
 
         // 🔒 1. Vérification AVANT login
         authAttemptService.checkIfLocked(username);
@@ -75,8 +74,16 @@ public class HybridAuthService implements AuthService {
 
             if (isOnline()) {
                 log.info("Mode ONLINE - Firebase");
-                response = firebaseAuthService.authenticate(request);
-                syncToLocal(request, response);
+                try {
+                    LoginRequest normalizedRequest = new LoginRequest();
+                    normalizedRequest.setEmail(username);
+                    normalizedRequest.setPassword(request.getPassword());
+                    response = firebaseAuthService.authenticate(normalizedRequest);
+                    syncToLocal(request, response);
+                } catch (Exception e) {
+                    log.warn("Firebase auth failed, fallback to local: {}", e.getMessage());
+                    response = authenticateOffline(request);
+                }
             } else {
                 log.info("Mode OFFLINE - Local");
                 response = authenticateOffline(request);
@@ -100,7 +107,7 @@ public class HybridAuthService implements AuthService {
      */
     private AuthResponse authenticateOffline(LoginRequest request) {
         // Récupérer l'utilisateur depuis PostgreSQL
-        java.util.Optional<User> userOpt = localAuthService.findByEmail(request.getEmail());
+        java.util.Optional<User> userOpt = localAuthService.findByEmail(normalizeEmail(request.getEmail()));
         if (userOpt.isEmpty()) {
             throw new RuntimeException("Utilisateur introuvable en mode offline");
         }
@@ -122,6 +129,13 @@ public class HybridAuthService implements AuthService {
         response.setUsername(user.getUsername());
         response.setRoles(roleNames);
         return response;
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null) {
+            return null;
+        }
+        return email.trim().toLowerCase();
     }
 
 

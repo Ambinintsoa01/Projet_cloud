@@ -30,12 +30,20 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
 
         String requestPath = request.getRequestURI();
         String method = request.getMethod();
+
+        // Toujours laisser passer les préflight CORS
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         
         // Laisser passer les requêtes publiques sans vérification du token
         if (requestPath.startsWith("/public/") || 
-            requestPath.startsWith("/api/auth/") ||
             requestPath.startsWith("/actuator/") ||
             requestPath.equals("/api/init-firestore") ||
+            requestPath.equals("/api/auth/login") ||
+            requestPath.equals("/api/auth/register") ||
+            requestPath.equals("/api/auth/sync") ||
             requestPath.equals("/api/signalement-types") ||
             requestPath.equals("/api/problemes/ouverts") ||
             requestPath.equals("/api/signalements") ||
@@ -61,17 +69,37 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
                 String email = claims.get("email", String.class);
                 String username = claims.get("username", String.class);
                 
-                // Extract roles from JWT claims
-                @SuppressWarnings("unchecked")
-                List<String> roles = (List<String>) claims.get("roles");
-                if (roles == null) {
-                    roles = new ArrayList<>();
-                    roles.add("ROLE_USER");
+                // Extract roles from JWT claims (handle List/Set/String)
+                List<String> roles = new ArrayList<>();
+                Object rolesObj = claims.get("roles");
+                if (rolesObj instanceof List<?>) {
+                    for (Object role : (List<?>) rolesObj) {
+                        if (role != null) roles.add(role.toString());
+                    }
+                } else if (rolesObj instanceof java.util.Set<?>) {
+                    for (Object role : (java.util.Set<?>) rolesObj) {
+                        if (role != null) roles.add(role.toString());
+                    }
+                } else if (rolesObj instanceof String) {
+                    String[] parts = ((String) rolesObj).split(",");
+                    for (String part : parts) {
+                        String trimmed = part.trim();
+                        if (!trimmed.isEmpty()) roles.add(trimmed);
+                    }
+                } else if (rolesObj != null) {
+                    roles.add(rolesObj.toString());
+                }
+
+                if (roles.isEmpty()) {
+                    roles.add("USER");
                 }
 
                 // Convert roles to authorities
                 List<SimpleGrantedAuthority> authorities = new ArrayList<>();
                 for (String role : roles) {
+                    if (role == null || role.isBlank()) {
+                        continue;
+                    }
                     // Ensure role has ROLE_ prefix
                     String roleName = role.startsWith("ROLE_") ? role : "ROLE_" + role;
                     authorities.add(new SimpleGrantedAuthority(roleName));

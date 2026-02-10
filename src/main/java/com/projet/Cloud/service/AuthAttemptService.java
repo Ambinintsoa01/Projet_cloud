@@ -36,25 +36,27 @@ public class AuthAttemptService {
 
     // 🔒 Vérification avant login
     public void checkIfLocked(String username) {
-        lockRepo.findByUsername(username).ifPresent(lock -> {
+        String normalized = normalizeEmail(username);
+        lockRepo.findByUsername(normalized).ifPresent(lock -> {
             if (lock.isLocked() &&
                 lock.getLockedUntil() != null &&
                 lock.getLockedUntil().isAfter(LocalDateTime.now())) {
 
-                throw new AccountLockedException(username, lock.getLockedUntil().toString());
+                throw new AccountLockedException(normalized, lock.getLockedUntil().toString());
             }
         });
     }
 
     // ❌ Échec de login
     public void loginFailed(String username) {
+        String normalized = normalizeEmail(username);
 
-        attemptRepo.save(createAttempt(username, false));
+        attemptRepo.save(createAttempt(normalized, false));
 
-        AccountLock lock = lockRepo.findByUsername(username)
+        AccountLock lock = lockRepo.findByUsername(normalized)
                 .orElseGet(() -> {
                     AccountLock l = new AccountLock();
-                    l.setUsername(username);
+                    l.setUsername(normalized);
                     l.setFailedAttempts(0);
                     l.setLocked(false);
                     return l;
@@ -73,8 +75,9 @@ public class AuthAttemptService {
 
     // ✅ Succès de login
     public void loginSucceeded(String username) {
-        attemptRepo.save(createAttempt(username, true));
-        lockRepo.deleteById(username);
+        String normalized = normalizeEmail(username);
+        attemptRepo.save(createAttempt(normalized, true));
+        lockRepo.deleteById(normalized);
     }
 
     private LoginAttempt createAttempt(String username, boolean success) {
@@ -88,6 +91,13 @@ public class AuthAttemptService {
     public void unlockUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
-        lockRepo.findByUsername(user.getEmail()).ifPresent(lockRepo::delete);
+        lockRepo.findByUsername(normalizeEmail(user.getEmail())).ifPresent(lockRepo::delete);
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null) {
+            return null;
+        }
+        return email.trim().toLowerCase();
     }
 }
