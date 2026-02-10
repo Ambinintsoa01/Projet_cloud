@@ -26,4 +26,6 @@ public class CreateSignalementRequest {
     
     private Double budget;
     
+    private Integer niveau;
+    
 }

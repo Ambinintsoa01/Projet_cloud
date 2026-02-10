@@ -24,6 +24,7 @@ public class SignalementService {
     private final SignalementTypeRepository typeRepository;
     private final UserRepository userRepository;
     private final FirebaseSignalementService firebaseSignalementService;
+    private final PushNotificationService pushNotificationService;
 
     /**
      * Créer un nouveau signalement
@@ -48,6 +49,7 @@ public class SignalementService {
         signalement.setDescription(request.getDescription());
         signalement.setSurfaceM2(request.getSurfaceM2());
         signalement.setBudget(request.getBudget());
+        signalement.setNiveau(request.getNiveau() != null ? request.getNiveau() : 1);
         // signalement.setEntrepriseConcernee(request.getEntrepriseConcernee());
         signalement.setStatus("nouveau");
         signalement.setDateSignalement(LocalDateTime.now());
@@ -116,6 +118,8 @@ public class SignalementService {
         Signalement signalement = signalementRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Signalement introuvable"));
         
+        String previousStatus = signalement.getStatus();
+
         if (request.getDescription() != null) {
             signalement.setDescription(request.getDescription());
         }
@@ -139,6 +143,10 @@ public class SignalementService {
         signalement.setUpdatedAt(LocalDateTime.now());
         
         Signalement saved = signalementRepository.save(signalement);
+
+        if (request.getStatus() != null && !request.getStatus().equals(previousStatus)) {
+            pushNotificationService.sendStatusChangeNotification(saved, previousStatus);
+        }
 
         // Synchroniser vers Firebase si firebaseId est disponible
         if (saved.getFirebaseId() != null && !saved.getFirebaseId().isBlank()) {

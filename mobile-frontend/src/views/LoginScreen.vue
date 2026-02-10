@@ -86,6 +86,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { validateLoginForm, validateEmail } from '@/utils/validators'
 import { useOfflineStorage } from '@/composables/useOfflineStorage'
+import { Capacitor } from '@capacitor/core'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -159,27 +160,46 @@ const handleLogin = async () => {
 
   try {
     await loading.present()
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // Attendre un peu pour que l'UI se mette à jour
+    await new Promise(resolve => setTimeout(resolve, 500))
 
     const result = await authStore.login(formData.value.email, formData.value.password)
 
     if (result.success) {
       await showToast('Connexion réussie !', 'success')
+      
+      // Attendre que l'authentification Firebase soit complètement prête
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Rediriger vers la carte principale
       await router.push('/map')
     } else {
-      throw new Error('Erreur lors de la connexion')
+      throw new Error('Échec de la connexion')
     }
 
   } catch (error) {
-    console.error('Erreur de connexion:', error)
-    const errorMessage = error.message || 'Erreur lors de la connexion'
-    await showToast(errorMessage, 'danger')
-
-    if (errorMessage.includes('email')) {
+    console.error('❌ Erreur de connexion:', error)
+    
+    let errorMessage = 'Erreur lors de la connexion'
+    
+    // Messages d'erreur plus spécifiques
+    if (error.code === 'auth/user-not-found') {
+      errorMessage = 'Aucun compte trouvé avec cet email'
       errors.value.email = errorMessage
-    } else if (errorMessage.includes('mot de passe')) {
+    } else if (error.code === 'auth/wrong-password') {
+      errorMessage = 'Mot de passe incorrect'
       errors.value.password = errorMessage
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Adresse email invalide'
+      errors.value.email = errorMessage
+    } else if (error.code === 'auth/too-many-requests') {
+      errorMessage = 'Trop de tentatives. Réessayez plus tard'
+    } else if (error.message) {
+      errorMessage = error.message
     }
+    
+    await showToast(errorMessage, 'danger')
 
   } finally {
     isLoading.value = false
@@ -203,8 +223,24 @@ onMounted(async () => {
   }
 
   if (process.env.NODE_ENV === 'development') {
-    formData.value.email = 'test@example.com'
-    formData.value.password = 'password123'
+    formData.value.email = 'Oceane12@gmail.com'
+    formData.value.password = 'Oceane12'
+  }
+})
+
+const isAndroid = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'
+
+onMounted(async () => {
+  if (!isOnline.value) {
+    await showToast('Connexion Internet requise', 'warning')
+  }
+
+  if (isAndroid) {
+    formData.value.email = 'Oceane12@gmail.com'
+    formData.value.password = 'Oceane12'
+  } else if (process.env.NODE_ENV === 'development') {
+    formData.value.email = 'Oceane12@gmail.com'
+    formData.value.password = 'Oceane12'
   }
 })
 </script>

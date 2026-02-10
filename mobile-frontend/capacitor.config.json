@@ -16,6 +16,9 @@
       "height": 1024,
       "preserveAspectRatio": true,
       "quality": 80
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
     }
   },
   "server": {

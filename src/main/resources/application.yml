@@ -4,6 +4,11 @@ spring:
   
   profiles:
     active: dev
+  
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
 
 # # Configuration serveur
 server:

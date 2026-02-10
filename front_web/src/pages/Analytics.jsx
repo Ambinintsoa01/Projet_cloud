@@ -41,8 +41,10 @@ function Analytics() {
           byStatus: {},
           avgBudgetCompleted: 0,
           avgSurfaceCompleted: 0,
+          avgCoutEstimeCompleted: 0,
           totalBudget: 0,
-          totalSurface: 0
+          totalSurface: 0,
+          totalCoutEstime: 0
         });
         setLoading(false);
         return;
@@ -67,6 +69,8 @@ function Analytics() {
       let completedBudget = 0;
       let completedSurface = 0;
       let completedCount = 0;
+      let totalCoutEstime = 0;
+      let completedCoutEstime = 0;
 
       signalements.forEach(item => {
         const status = (item.status || '').toLowerCase();
@@ -74,8 +78,12 @@ function Analytics() {
         // Compter le budget et la surface
         const budget = parseFloat(item.budget) || 0;
         const surface = parseFloat(item.surfaceM2) || 0;
+        const niveau = parseInt(item.niveau) || 1;
+        const coutEstime = budget * surface * niveau;
+        
         totalBudget += budget;
         totalSurface += surface;
+        totalCoutEstime += coutEstime;
 
         // Classifier par statut
         if (status === 'nouveau') {
@@ -89,6 +97,7 @@ function Analytics() {
           completed++;
           completedBudget += budget;
           completedSurface += surface;
+          completedCoutEstime += coutEstime;
           completedCount++;
         } else if (status) {
           byStatus['autre']++;
@@ -111,6 +120,7 @@ function Analytics() {
       
       const avgBudgetCompleted = completedCount > 0 ? (completedBudget / completedCount).toFixed(2) : 0;
       const avgSurfaceCompleted = completedCount > 0 ? (completedSurface / completedCount).toFixed(2) : 0;
+      const avgCoutEstimeCompleted = completedCount > 0 ? (completedCoutEstime / completedCount).toFixed(2) : 0;
 
       setStats({
         totalSignalements: total,
@@ -126,8 +136,10 @@ function Analytics() {
         } : byStatus,
         avgBudgetCompleted: parseFloat(avgBudgetCompleted),
         avgSurfaceCompleted: parseFloat(avgSurfaceCompleted),
+        avgCoutEstimeCompleted: parseFloat(avgCoutEstimeCompleted),
         totalBudget: totalBudget.toFixed(2),
-        totalSurface: totalSurface.toFixed(2)
+        totalSurface: totalSurface.toFixed(2),
+        totalCoutEstime: totalCoutEstime.toFixed(2)
       });
     } catch (err) {
       console.error('❌ Erreur lors du chargement des statistiques:', err);
@@ -339,6 +351,18 @@ function Analytics() {
             <h4>Surface Moyenne (Terminés)</h4>
             <p className="summary-value">{parseFloat(stats.avgSurfaceCompleted).toLocaleString('fr-FR')}</p>
             <p className="summary-desc">En m²</p>
+          </div>
+
+          <div className="summary-item">
+            <h4>Coût Estimé Total</h4>
+            <p className="summary-value">{parseFloat(stats.totalCoutEstime).toLocaleString('fr-FR')}</p>
+            <p className="summary-desc">Budget × Surface × Niveau</p>
+          </div>
+
+          <div className="summary-item">
+            <h4>Coût Moyen (Terminés)</h4>
+            <p className="summary-value">{parseFloat(stats.avgCoutEstimeCompleted).toLocaleString('fr-FR')}</p>
+            <p className="summary-desc">Par signalement</p>
           </div>
         </div>
       </div>

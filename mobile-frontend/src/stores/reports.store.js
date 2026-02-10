@@ -104,9 +104,19 @@ export const useReportsStore = defineStore('reports', () => {
       reports.value = Array.isArray(data) ? data : []
       
       // Sauvegarder dans le cache local pour consultation offline
-      storageService.setReportsData(reports.value)
+      if (reports.value.length > 0) {
+        storageService.setReportsData(reports.value)
+        console.log(`✅ fetchReports: ${reports.value.length} signalements chargés depuis Firestore`)
+      } else {
+        console.log('⚠️ Aucun signalement disponible')
+        // Essayer de charger depuis le cache
+        const cached = storageService.getReportsData()
+        if (Array.isArray(cached) && cached.length > 0) {
+          reports.value = cached
+          console.log(`📦 ${reports.value.length} signalements chargés depuis le cache`)
+        }
+      }
 
-      console.log(`✅ fetchReports: ${reports.value.length} signalements chargés depuis Firestore`)
       return { success: true, fromFirebase: true }
     } catch (error) {
       console.error('❌ fetchReports: Erreur lors du chargement depuis Firestore:', error)
@@ -115,12 +125,14 @@ export const useReportsStore = defineStore('reports', () => {
       const cached = storageService.getReportsData()
       reports.value = Array.isArray(cached) ? cached : []
 
-      if (reports.value.length === 0) {
-        throw new Error('Impossible de charger les signalements. Vérifiez votre connexion.')
+      console.log(`📦 ${reports.value.length} signalements chargés depuis le cache`)
+      
+      // Ne pas throw d'erreur, juste retourner le résultat
+      return { 
+        success: reports.value.length > 0, 
+        fromCache: true,
+        error: error.message 
       }
-
-      console.log(`⚠️ ${reports.value.length} signalements chargés depuis le cache`)
-      return { success: true, fromCache: true }
     } finally {
       isLoading.value = false
     }
@@ -166,6 +178,12 @@ export const useReportsStore = defineStore('reports', () => {
     } finally {
       isLoading.value = false
     }
+  }
+
+  function addReport(report) {
+    console.log('➕ Ajout signalement au store:', report)
+    reports.value.unshift(report) // Ajoute au début
+    console.log('📊 Total signalements après ajout:', reports.value.length)
   }
 
   async function updateReport(reportId, updates) {
@@ -225,6 +243,7 @@ export const useReportsStore = defineStore('reports', () => {
 
     // Actions
     fetchReports,
+    addReport,
     createReport,
     updateReport,
     setFilters,

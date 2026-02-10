@@ -14,6 +14,7 @@ const DashboardScreen = () => import('@/views/DashboardScreen.vue')
 const ProfileScreen = () => import('@/views/ProfileScreen.vue')
 const SearchScreen = () => import('@/views/SearchScreen.vue')
 const ManagerProblemesScreen = () => import('@/views/ManagerProblemesScreen.vue')
+const NotificationsScreen = () => import('@/views/NotificationsScreen.vue')
 
 const routes = [
   {
@@ -79,6 +80,12 @@ const routes = [
     name: 'Search',
     component: SearchScreen,
     meta: { requiresAuth: true, showTabs: true }
+  },
+  {
+    path: '/notifications',
+    name: 'Notifications',
+    component: NotificationsScreen,
+    meta: { requiresAuth: true, showTabs: false }
   },
   {
     path: '/manager/problemes',

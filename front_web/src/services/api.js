@@ -318,7 +318,8 @@ export const problemService = {
         typeId: conversionData.typeId,
         description: conversionData.description,
         surfaceM2: conversionData.surfaceM2 || null,
-        budget: conversionData.budget || null
+        budget: conversionData.budget || null,
+        niveau: conversionData.niveau || null
       });
       return response.data;
     } catch (error) {

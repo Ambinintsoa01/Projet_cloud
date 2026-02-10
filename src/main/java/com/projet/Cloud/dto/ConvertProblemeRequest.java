@@ -18,6 +18,8 @@ public class ConvertProblemeRequest {
 
     private Double budget;
 
+    private Integer niveau;
+
     /**
      * Permet au manager d'ajouter ou préciser la description lors de la conversion.
      */

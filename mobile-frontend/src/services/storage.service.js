@@ -1,4 +1,10 @@
-// Service de stockage pour gérer le localStorage de manière centralisée
+import { Capacitor } from '@capacitor/core'
+
+// Service de stockage unifié qui fonctionne sur web et mobile
+// Utilise localStorage sur les deux plateformes (compatible Capacitor v8+)
+
+const isNativePlatform = Capacitor.isNativePlatform()
+
 export class StorageService {
   // Clés de stockage
   static KEYS = {
@@ -16,7 +22,7 @@ export class StorageService {
       const item = localStorage.getItem(key)
       return item ? JSON.parse(item) : defaultValue
     } catch (error) {
-      console.error(`Erreur lors de la lecture de ${key}:`, error)
+      console.error(`❌ Erreur lors de la lecture de ${key}:`, error)
       return defaultValue
     }
   }
@@ -26,7 +32,7 @@ export class StorageService {
       localStorage.setItem(key, JSON.stringify(value))
       return true
     } catch (error) {
-      console.error(`Erreur lors de la sauvegarde de ${key}:`, error)
+      console.error(`❌ Erreur lors de la sauvegarde de ${key}:`, error)
       return false
     }
   }
@@ -36,39 +42,44 @@ export class StorageService {
       localStorage.removeItem(key)
       return true
     } catch (error) {
-      console.error(`Erreur lors de la suppression de ${key}:`, error)
+      console.error(`❌ Erreur lors de la suppression de ${key}:`, error)
       return false
     }
   }
 
   static clear() {
     try {
-      // Ne supprimer que les clés de l'application, pas tout le localStorage
+      // Ne supprimer que les clés de l'application
       Object.values(this.KEYS).forEach(key => {
         localStorage.removeItem(key)
       })
       return true
     } catch (error) {
-      console.error('Erreur lors du nettoyage du stockage:', error)
+      console.error('❌ Erreur lors du nettoyage du stockage:', error)
       return false
     }
   }
 
   static exists(key) {
-    return localStorage.getItem(key) !== null
+    try {
+      return localStorage.getItem(key) !== null
+    } catch (error) {
+      console.error(`❌ Erreur lors de la vérification de ${key}:`, error)
+      return false
+    }
   }
 
   // Méthodes spécifiques à l'authentification
   static getAuthToken() {
-    return localStorage.getItem(this.KEYS.AUTH_TOKEN)
+    return this.get(this.KEYS.AUTH_TOKEN)
   }
 
   static setAuthToken(token) {
-    localStorage.setItem(this.KEYS.AUTH_TOKEN, token)
+    return this.set(this.KEYS.AUTH_TOKEN, token)
   }
 
   static removeAuthToken() {
-    localStorage.removeItem(this.KEYS.AUTH_TOKEN)
+    return this.remove(this.KEYS.AUTH_TOKEN)
   }
 
   static getUserData() {
@@ -197,12 +208,12 @@ export class StorageService {
 
       if (filteredReports.length !== reports.length) {
         this.setReportsData(filteredReports)
-        console.log(`Nettoyage: ${reports.length - filteredReports.length} rapports anciens supprimés`)
+        console.log(`✅ Nettoyage: ${reports.length - filteredReports.length} rapports anciens supprimés`)
       }
 
       return true
     } catch (error) {
-      console.error('Erreur lors du nettoyage:', error)
+      console.error('❌ Erreur lors du nettoyage:', error)
       return false
     }
   }

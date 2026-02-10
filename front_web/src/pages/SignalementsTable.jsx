@@ -204,7 +204,18 @@ export default function SignalementsTable() {
           break;
         case 'surface':
           aValue = parseFloat(a.surfaceM2) || 0;
-          bValue = parseFloat(a.surfaceM2) || 0;
+          bValue = parseFloat(b.surfaceM2) || 0;
+          break;
+        case 'coutEstime':
+          const aBudget = parseFloat(a.budget) || 0;
+          const aNiveau = parseInt(a.niveau) || 1;
+          const aSurface = parseFloat(a.surfaceM2) || 0;
+          aValue = aBudget * aSurface * aNiveau;
+          
+          const bBudget = parseFloat(b.budget) || 0;
+          const bNiveau = parseInt(b.niveau) || 1;
+          const bSurface = parseFloat(b.surfaceM2) || 0;
+          bValue = bBudget * bSurface * bNiveau;
           break;
         default:
           return 0;
@@ -397,8 +408,14 @@ export default function SignalementsTable() {
               <th onClick={() => handleSort('surface')} className="sortable">
                 Surface (m²) {sortBy === 'surface' && (sortOrder === 'asc' ? '↑' : '↓')}
               </th>
+              <th onClick={() => handleSort('niveau')} className="sortable">
+                Niveau {sortBy === 'niveau' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </th>
               <th onClick={() => handleSort('budget')} className="sortable">
-                Budget (Ar) {sortBy === 'budget' && (sortOrder === 'asc' ? '↑' : '↓')}
+                Prix/m² (Ar) {sortBy === 'budget' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('coutEstime')} className="sortable">
+                Coût Estimé (Ar) {sortBy === 'coutEstime' && (sortOrder === 'asc' ? '↑' : '↓')}
               </th>
               <th>Entreprise</th>
               <th>Utilisateur</th>
@@ -408,7 +425,7 @@ export default function SignalementsTable() {
           <tbody>
             {paginatedSignalements.length === 0 ? (
               <tr>
-                <td colSpan="9" className="no-data">
+                <td colSpan="11" className="no-data">
                   Aucun signalement trouvé
                 </td>
               </tr>
@@ -431,7 +448,19 @@ export default function SignalementsTable() {
                     {signalement.surfaceM2 ? parseFloat(signalement.surfaceM2).toLocaleString('fr-FR') : '—'}
                   </td>
                   <td className="number-cell">
+                    {signalement.niveau || 1}
+                  </td>
+                  <td className="number-cell">
                     {signalement.budget ? parseFloat(signalement.budget).toLocaleString('fr-FR') : '—'}
+                  </td>
+                  <td className="number-cell">
+                    {(() => {
+                      const budget = parseFloat(signalement.budget) || 0;
+                      const niveau = parseInt(signalement.niveau) || 1;
+                      const surface = parseFloat(signalement.surfaceM2) || 0;
+                      const coutEstime = budget * surface * niveau;
+                      return coutEstime > 0 ? coutEstime.toLocaleString('fr-FR') : '—';
+                    })()}
                   </td>
                   <td>{signalement.entrepriseConcernee || '—'}</td>
                   <td>{getUserName(signalement)}</td>

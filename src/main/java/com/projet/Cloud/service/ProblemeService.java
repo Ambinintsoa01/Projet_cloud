@@ -89,7 +89,8 @@ public class ProblemeService {
                 type.getId(),
                 request.getDescription(),
                 request.getSurfaceM2(),
-                request.getBudget()
+                request.getBudget(),
+                request.getNiveau()
         );
 
         Signalement signalementCree = signalementService.createSignalement(sigRequest, probleme.getUser().getId());

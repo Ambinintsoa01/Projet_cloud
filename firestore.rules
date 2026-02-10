@@ -27,39 +27,45 @@ service cloud.firestore {
     }
 
     // Collection: problemes
-    // Accès simplifié (auth requis) pour permettre le fonctionnement mobile
+    // Lecture publique pour affichage sur carte, écriture authentifiée
     match /problemes/{problemeId} {
-      // Lecture: tout utilisateur authentifié
-      allow read: if isAuthenticated();
+      // Lecture: Tout le monde (visiteurs inclus pour la carte)
+      allow read: if true;
+      
+      // Création: utilisateurs authentifiés uniquement
+      allow create: if isAuthenticated() &&
+                       request.resource.data.firebaseUid == request.auth.uid &&
+                       request.resource.data.status == 'ouvert';
+      
+      // Mise à jour: propriétaire uniquement
+      allow update: if isAuthenticated() &&
+                       request.auth.uid == resource.data.firebaseUid;
+      
+      // Suppression: propriétaire uniquement
+      allow delete: if isAuthenticated() &&
+                       request.auth.uid == resource.data.firebaseUid;
+    }
+
+    // Collection: signalements
+    // Lecture publique pour affichage sur carte, écriture authentifiée
+    match /signalements/{signalementId} {
+      // Lecture: Tout le monde (visiteurs inclus pour la carte)
+      allow read: if true;
       
       // Création: utilisateurs authentifiés uniquement
       allow create: if isAuthenticated() &&
                        request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.status == 'ouvert';
-      
-      // Mise à jour: utilisateurs authentifiés (conversion mobile)
-      allow update: if isAuthenticated();
-      
-      // Suppression: interdite
-      allow delete: if false;
-    }
-
-    // Collection: signalements
-    // Accès simplifié (auth requis)
-    match /signalements/{signalementId} {
-      // Lecture: tous les utilisateurs authentifiés
-      allow read: if isAuthenticated();
-      
-      // Création: utilisateurs authentifiés
-      allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid &&
                        request.resource.data.status == 'nouveau';
       
-      // Mise à jour: utilisateurs authentifiés
-      allow update: if isAuthenticated();
+      // Mise à jour: propriétaire uniquement
+      allow update: if isAuthenticated() &&
+                       (request.auth.uid == resource.data.userId || 
+                        request.auth.uid == resource.data.firebaseUid);
       
-      // Suppression: interdite
-      allow delete: if false;
+      // Suppression: propriétaire uniquement
+      allow delete: if isAuthenticated() &&
+                       (request.auth.uid == resource.data.userId || 
+                        request.auth.uid == resource.data.firebaseUid);
     }
 
     // Collection: signalementTypes

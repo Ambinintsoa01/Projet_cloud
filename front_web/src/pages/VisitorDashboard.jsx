@@ -398,7 +398,7 @@ export default function VisitorDashboard() {
                                     <p><strong>Surface:</strong> {parseFloat(signalement.surfaceM2).toLocaleString('fr-FR')} m²</p>
                                   )}
                                   {signalement.budget && (
-                                    <p><strong>Budget:</strong> {parseFloat(signalement.budget).toLocaleString('fr-FR')} Ar</p>
+                                    <p><strong>Prix/m²:</strong> {parseFloat(signalement.budget).toLocaleString('fr-FR')} Ar</p>
                                   )}
                                   {signalement.entrepriseConcernee && (
                                     <p><strong>Entreprise:</strong> {signalement.entrepriseConcernee}</p>

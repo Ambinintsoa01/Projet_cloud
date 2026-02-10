@@ -1,0 +1,39 @@
+/* Styles pour les toasts de notifications */
+.notification-toast {
+  --border-radius: 12px;
+  --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.notification-toast::part(message) {
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 8px 0;
+}
+
+.notification-toast::part(header) {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.notification-toast::part(button) {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+/* Animation pour le toast */
+@keyframes slideInDown {
+  from {
+    transform: translate3d(0, -100%, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+.notification-toast {
+  animation: slideInDown 0.3s ease-out;
+}

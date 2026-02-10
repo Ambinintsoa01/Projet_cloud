@@ -211,7 +211,8 @@ export function useSignalements() {
         entrepriseConcernee: data.entrepriseConcernee || null,
 
         // Utilisateur
-        userId: currentUser.uid,
+        userId: currentUser.uid,  // Pour compatibilité
+        firebaseUid: currentUser.uid,  // ID Firebase utilisé pour les notifications
         userEmail: currentUser.email || null,
         userName: currentUser.displayName || null,
         isAnonymous: data.isAnonymous || false,
@@ -269,7 +270,7 @@ export function useSignalements() {
 
       const q = query(
         collection(db, 'signalements'),
-        where('userId', '==', currentUser.uid)
+        where('firebaseUid', '==', currentUser.uid)
       )
 
       const snapshot = await getDocs(q)
@@ -387,6 +388,12 @@ export function useSignalements() {
     error.value = null
 
     try {
+      // Vérifier si Firebase est initialisé et l'utilisateur est authentifié
+      if (!auth.currentUser) {
+        console.warn('⚠️ Utilisateur non authentifié, impossible de charger les signalements')
+        return []
+      }
+
       const snapshot = await getDocs(collection(db, 'signalements'))
       const results = snapshot.docs
         .map(doc => ({
@@ -395,11 +402,24 @@ export function useSignalements() {
         }))
         .filter(item => !item._isExample)
 
+      console.log(`✅ ${results.length} signalements récupérés`)
       return results
     } catch (err) {
-      console.error('Erreur lors de la récupération des signalements:', err)
-      error.value = err.message
-      throw err
+      console.error('❌ Erreur lors de la récupération des signalements:', err)
+      
+      // Gestion d'erreurs spécifiques
+      if (err.code === 'permission-denied') {
+        console.error('❌ Permission refusée - Vérifiez que l\'utilisateur est authentifié')
+        error.value = 'Permission refusée. Veuillez vous reconnecter.'
+      } else if (err.code === 'unavailable') {
+        console.error('❌ Service Firestore indisponible')
+        error.value = 'Service temporairement indisponible'
+      } else {
+        error.value = err.message || 'Erreur de chargement'
+      }
+      
+      // Retourner un tableau vide au lieu de throw pour éviter le crash
+      return []
     } finally {
       isLoading.value = false
     }

@@ -494,7 +494,7 @@ export default function Map() {
 
                   {signalement.budget && (
                     <div className="popup-budget">
-                      <strong>💰 Budget estimé:</strong>
+                      <strong>💰 Prix/m² estimé:</strong>
                       <p>{new Intl.NumberFormat("fr-FR", { 
                         style: "currency", 
                         currency: "MGA",

@@ -4,6 +4,13 @@
       <ion-toolbar>
         <ion-title>Tableau de bord</ion-title>
         <ion-buttons slot="end">
+          <!-- Bouton notifications avec badge -->
+          <ion-button @click="goToNotifications" class="notification-button">
+            <ion-icon name="notifications"></ion-icon>
+            <ion-badge v-if="notificationCount > 0" color="danger" class="notification-badge">
+              {{ notificationCount }}
+            </ion-badge>
+          </ion-button>
           <ion-button v-if="isManager" @click="goToProblemes" title="Gérer les problèmes">
             <ion-icon name="alert-circle"></ion-icon>
           </ion-button>
@@ -267,12 +274,17 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useReportsStore } from '@/stores/reports.store'
 import { useAuthStore } from '@/stores/auth.store'
+import { useSignalementNotifications } from '@/composables/useSignalementNotifications'
 import { REPORT_STATUS_LABELS, REPORT_STATUS_COLORS } from '@/utils/constants'
 
 // État réactif
 const router = useRouter()
 const authStore = useAuthStore()
 const reportsStore = useReportsStore()
+
+// Notifications
+const { unreadCount, startListening, stopListening, loadNotificationsFromStorage } = useSignalementNotifications()
+const notificationCount = computed(() => unreadCount())
 
 const selectedFilter = ref('all')
 const searchQuery = ref('')
@@ -580,6 +592,10 @@ const goToProblemes = () => {
   router.push('/manager/problemes')
 }
 
+const goToNotifications = () => {
+  router.push('/notifications')
+}
+
 const showToast = async (message, color = 'primary') => {
   const toast = await toastController.create({
     message,
@@ -591,14 +607,18 @@ const showToast = async (message, color = 'primary') => {
 }
 
 onMounted(async () => {
-  console.log('📱 DashboardScreen mounted')
-  console.log('👤 User actuel:', authStore.user)
+  console.log('📱 [DASHBOARD] Mounted')
+  console.log('👤 [DASHBOARD] User actuel:', authStore.user)
   await reportsStore.fetchReports()
-  console.log('📊 Signalements chargés:', reportsStore.reports.length)
+  console.log('📊 [DASHBOARD] Signalements chargés:', reportsStore.reports.length)
+  
+  // Charger les notifications depuis le storage (pas besoin de startListening, déjà fait dans main.js)
+  loadNotificationsFromStorage()
+  console.log('📦 [DASHBOARD] Notifications chargées depuis le storage')
   
   // Afficher un échantillon des données
   if (reportsStore.reports.length > 0) {
-    console.log('📄 Échantillon de signalement:', {
+    console.log('📄 [DASHBOARD] Échantillon de signalement:', {
       id: reportsStore.reports[0].id,
       userId: reportsStore.reports[0].userId,
       user_id: reportsStore.reports[0].user_id,
@@ -616,6 +636,25 @@ watch(() => selectedFilter.value, (newVal) => {
 </script>
 
 <style scoped>
+/* Bouton de notifications */
+.notification-button {
+  position: relative;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 10px;
+  border-radius: 9px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .dashboard-content {
   --background: var(--app-background);
 }

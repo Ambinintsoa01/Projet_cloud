@@ -155,10 +155,67 @@
           </div>
         </div>
 
-        <!-- Info note -->
-        <div class="info-box">
-          <ion-icon name="information-circle"></ion-icon>
-          <p>Les détails de conversion en signalement seront complétés par un manager</p>
+        <!-- Photos du problème -->
+        <div class="photos-section">
+          <div class="section-header">
+            <h3>📷 Photos du problème</h3>
+            <p>Ajoutez des photos pour aider le manager à comprendre le problème</p>
+          </div>
+
+          <!-- Boutons d'ajout de photos -->
+          <div class="photo-actions">
+            <ion-button
+              expand="block"
+              fill="outline"
+              @click="takePhoto"
+              :disabled="isTakingPhoto"
+              class="photo-action-btn"
+            >
+              <ion-spinner v-if="isTakingPhoto" slot="start" name="crescent"></ion-spinner>
+              <ion-icon v-else name="camera" slot="start"></ion-icon>
+              Prendre une photo
+            </ion-button>
+
+            <ion-button
+              expand="block"
+              fill="outline"
+              @click="selectFromGallery"
+              :disabled="isSelectingPhoto"
+              class="photo-action-btn"
+            >
+              <ion-spinner v-if="isSelectingPhoto" slot="start" name="crescent"></ion-spinner>
+              <ion-icon v-else name="images" slot="start"></ion-icon>
+              Choisir depuis la galerie
+            </ion-button>
+
+            <ion-button
+              expand="block"
+              fill="outline"
+              @click="selectFromFile"
+              :disabled="isUploadingFile"
+              class="photo-action-btn"
+            >
+              <ion-spinner v-if="isUploadingFile" slot="start" name="crescent"></ion-spinner>
+              <ion-icon v-else name="document" slot="start"></ion-icon>
+              Télécharger une image (PC/Téléphone)
+            </ion-button>
+          </div>
+
+          <!-- Affichage des photos -->
+          <div v-if="photos.length > 0" class="photos-grid">
+            <div v-for="photo in photos" :key="photo.id" class="photo-item">
+              <img :src="photo.dataUrl" :alt="photo.name" class="photo-thumbnail" />
+              <ion-button
+                fill="clear"
+                color="danger"
+                size="small"
+                @click="removePhoto(photo.id)"
+                class="remove-photo-btn"
+              >
+                <ion-icon name="close-circle"></ion-icon>
+              </ion-button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -275,13 +332,14 @@ const authStore = useAuthStore()
 const { signalementTypes, loadSignalementTypes, createSignalement } = useSignalements()
 const { createProbleme } = useProblemes()
 const { getCurrentPosition } = useGeolocation()
-const { photos, takePhoto: cameraTakePhoto, selectFromGallery: cameraSelectFromGallery, removePhoto: cameraRemovePhoto, clearPhotos } = useCamera()
+const { photos, takePhoto: cameraTakePhoto, selectFromGallery: cameraSelectFromGallery, removePhoto: cameraRemovePhoto, clearPhotos, error: cameraError } = useCamera()
 
 const currentStep = ref(1)
 const showLocationPicker = ref(false)
 const isGettingLocation = ref(false)
 const isTakingPhoto = ref(false)
 const isSelectingPhoto = ref(false)
+const isUploadingFile = ref(false)
 const isSubmitting = ref(false)
 
 // Helper: Check if current user has MANAGER role
@@ -500,9 +558,19 @@ const takePhoto = async () => {
     await showToast('Vous avez atteint le maximum de 3 photos', 'warning')
     return
   }
+  
   isTakingPhoto.value = true
+
   try {
-    await cameraTakePhoto()
+    const photo = await cameraTakePhoto()
+    if (!photo) {
+      throw new Error('Aucune photo retournée')
+    }
+    await showToast('Photo prise avec succès !', 'success')
+  } catch (error) {
+    console.error('❌ Erreur prise de photo:', error)
+    const msg = cameraError?.value || error?.message || 'Impossible de prendre une photo'
+    await showToast(msg, 'danger')
   } finally {
     isTakingPhoto.value = false
   }
@@ -513,9 +581,19 @@ const selectFromGallery = async () => {
     await showToast('Vous avez atteint le maximum de 3 photos', 'warning')
     return
   }
+  
   isSelectingPhoto.value = true
+
   try {
-    await cameraSelectFromGallery()
+    const photo = await cameraSelectFromGallery()
+    if (!photo) {
+      throw new Error('Aucune photo retournée')
+    }
+    await showToast('Photo sélectionnée avec succès !', 'success')
+  } catch (error) {
+    console.error('❌ Erreur sélection galerie:', error)
+    const msg = cameraError?.value || error?.message || 'Impossible de sélectionner une photo'
+    await showToast(msg, 'danger')
   } finally {
     isSelectingPhoto.value = false
   }
@@ -523,6 +601,115 @@ const selectFromGallery = async () => {
 
 const removePhoto = (photoId) => {
   cameraRemovePhoto(photoId)
+}
+
+const dataUrlToBlob = (dataUrl) => {
+  const parts = dataUrl.split(',')
+  const mimeMatch = parts[0].match(/data:(.*?);base64/)
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg'
+  const byteString = atob(parts[1])
+  const ab = new ArrayBuffer(byteString.length)
+  const ia = new Uint8Array(ab)
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i)
+  }
+  return new Blob([ab], { type: mime })
+}
+
+const selectFromFile = async () => {
+  if (photos.value.length >= 3) {
+    await showToast('Vous avez atteint le maximum de 3 photos', 'warning')
+    return
+  }
+
+  isUploadingFile.value = true
+
+  try {
+    // Créer un input file invisible
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.multiple = false // Une seule photo à la fois
+
+    input.onchange = async (event) => {
+      const file = event.target.files[0]
+      
+      if (!file) {
+        isUploadingFile.value = false
+        return
+      }
+
+      // Vérifier la taille du fichier (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        await showToast('Le fichier est trop volumineux (max 10MB)', 'danger')
+        isUploadingFile.value = false
+        return
+      }
+
+      // Vérifier le type de fichier
+      if (!file.type.startsWith('image/')) {
+        await showToast('Veuillez sélectionner une image valide', 'danger')
+        isUploadingFile.value = false
+        return
+      }
+
+      try {
+        // Lire le fichier et le convertir en base64
+        const reader = new FileReader()
+        
+        reader.onload = (e) => {
+          const dataUrl = e.target.result
+          
+          // Créer l'objet photo
+          const newPhoto = {
+            id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            dataUrl: dataUrl,
+            name: file.name,
+            fileName: file.name,
+            timestamp: new Date().toISOString(),
+            isFromFile: true,
+            size: file.size,
+            type: file.type
+          }
+
+          // Ajouter aux photos existantes
+          photos.value.push(newPhoto)
+          
+          console.log('✅ Fichier uploadé:', newPhoto)
+          showToast('Image ajoutée avec succès !', 'success')
+          
+          isUploadingFile.value = false
+        }
+
+        reader.onerror = () => {
+          console.error('❌ Erreur lecture du fichier')
+          showToast('Erreur lors de la lecture du fichier', 'danger')
+          isUploadingFile.value = false
+        }
+
+        // Lire le fichier
+        reader.readAsDataURL(file)
+
+      } catch (error) {
+        console.error('❌ Erreur traitement fichier:', error)
+        showToast('Erreur lors du traitement du fichier', 'danger')
+        isUploadingFile.value = false
+      }
+    }
+
+    input.oncancel = () => {
+      console.log('🚫 Sélection de fichier annulée')
+      isUploadingFile.value = false
+    }
+
+    // Déclencher la sélection de fichier
+    input.click()
+
+  } catch (error) {
+    console.error('❌ Erreur sélection fichier:', error)
+    await showToast('Erreur lors de la sélection du fichier', 'danger')
+    isUploadingFile.value = false
+  }
 }
 
 const submitReport = async () => {
@@ -582,41 +769,104 @@ const submitReport = async () => {
         }, 1500)
       }
     } else {
-      // User: Create probleme via Firestore
-      const result = await createProbleme({
+      // User: Create probleme et envoyer vers manager web avec photos
+      const problemeData = {
         latitude: formData.value.latitude,
         longitude: formData.value.longitude,
         typeId: formData.value.typeId || null,
-        description: formData.value.description
-      })
+        description: formData.value.description,
+        addressComplement: formData.value.addressComplement,
+        userId: authStore.user?.id || 'anonymous',
+        userName: authStore.user?.name || 'Utilisateur anonyme',
+        userEmail: authStore.user?.email || 'anonymous@example.com',
+        photos: photos.value.map(p => ({
+          dataUrl: p.dataUrl,
+          name: p.name || `photo_${p.id}.jpg`,
+          id: p.id
+        })),
+        createdAt: new Date().toISOString(),
+        status: 'pending_manager_review'
+      }
 
-      if (result?.success || result?.id) {
-        await showToast('Problème signalé avec succès ! Un manager va le traiter.', 'success')
+      console.log('📤 Envoi vers manager web:', problemeData)
+      
+      // Envoyer vers le manager web (API endpoint)
+      try {
+        const fd = new FormData()
 
-        // Reset form
-        formData.value = {
-          latitude: null,
-          longitude: null,
-          addressComplement: '',
-          typeId: null,
-          description: '',
-          surfaceM2: null,
-          budget: null,
-          entrepriseConcernee: '',
-          isAnonymous: false
+        // Champs texte
+        fd.append('latitude', String(problemeData.latitude))
+        fd.append('longitude', String(problemeData.longitude))
+        fd.append('typeId', problemeData.typeId ? String(problemeData.typeId) : '')
+        fd.append('description', problemeData.description || '')
+        fd.append('addressComplement', problemeData.addressComplement || '')
+        fd.append('userId', problemeData.userId || '')
+        fd.append('userName', problemeData.userName || '')
+        fd.append('userEmail', problemeData.userEmail || '')
+        fd.append('createdAt', problemeData.createdAt || '')
+        fd.append('status', problemeData.status || '')
+
+        // Photos: on envoie en multipart. IMPORTANT: champ utilisé = "photos"
+        // (si ton backend attend "photos[]", dis-moi et je change.)
+        for (const p of (photos.value || [])) {
+          if (!p?.dataUrl) continue
+          const blob = dataUrlToBlob(p.dataUrl)
+          const filename = p.fileName || p.name || `photo_${p.id || Date.now()}.jpg`
+          fd.append('photos', blob, filename)
         }
-        errors.value = {}
-        currentStep.value = 1
-        clearPhotos()
 
-        setTimeout(() => {
-          router.push('/map')
-        }, 1500)
+        const response = await fetch('http://localhost:3001/api/manager/reports', {
+          method: 'POST',
+          body: fd
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          console.log('✅ Réponse manager web:', result)
+          
+          await showToast('Problème signalé avec succès ! Un manager va le traiter.', 'success')
+          
+          // Reset form
+          formData.value = {
+            latitude: null,
+            longitude: null,
+            addressComplement: '',
+            typeId: null,
+            description: '',
+            surfaceM2: null,
+            budget: null,
+            entrepriseConcernee: '',
+            isAnonymous: false
+          }
+          errors.value = {}
+          currentStep.value = 1
+          clearPhotos()
+
+          setTimeout(() => {
+            router.push('/map')
+          }, 1500)
+        } else {
+          throw new Error('Erreur lors de l\'envoi vers le manager')
+        }
+      } catch (error) {
+        console.error('❌ Erreur envoi manager web:', error)
+        
+        // Fallback: Créer dans Firestore en attendant
+        const result = await createProbleme({
+          latitude: formData.value.latitude,
+          longitude: formData.value.longitude,
+          typeId: formData.value.typeId || null,
+          description: formData.value.description
+        })
+
+        if (result?.success || result?.id) {
+          await showToast('Problème signalé (mode dégradé). Un manager va le traiter.', 'warning')
+        }
       }
     }
   } catch (error) {
-    console.error('Erreur lors de l\'envoi:', error)
-    await showToast(error.message || 'Erreur lors de l\'envoi', 'danger')
+    console.error('Erreur lors de la soumission:', error)
+    await showToast('Erreur lors de la soumission', 'danger')
   } finally {
     isSubmitting.value = false
     await loading.dismiss()
@@ -852,11 +1102,34 @@ onUnmounted(() => {
   margin: 20px 0;
 }
 
-.photos-section h3 {
+.section-header {
+  margin-bottom: 16px;
+}
+
+.section-header h3 {
   font-size: 16px;
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   color: var(--ion-color-primary);
+}
+
+.section-header p {
+  font-size: 14px;
+  color: #b3b3b3;
+  margin: 0;
+}
+
+.photo-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.photo-action-btn {
+  flex: 1;
+  --background: rgba(255, 193, 7, 0.1);
+  --color: #ffc107;
+  --border-color: rgba(255, 193, 7, 0.3);
 }
 
 .photos-grid {

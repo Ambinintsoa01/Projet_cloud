@@ -43,6 +43,9 @@ public class Signalement {
     @Column(columnDefinition = "DECIMAL(10,2)")
     private Double budget;
 
+    @Column(name = "niveau")
+    private Integer niveau; // Niveau de priorité de 1 à 10
+
     // @Column(name = "entreprise_concernee")
     // private String entrepriseConcernee;
 
@@ -145,6 +148,13 @@ public class Signalement {
         this.budget = budget;
     }
 
+    public Integer getNiveau() {
+        return niveau;
+    }
+
+    public void setNiveau(Integer niveau) {
+        this.niveau = niveau;
+    }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;

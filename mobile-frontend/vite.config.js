@@ -7,6 +7,9 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
+      // Forcer l'utilisation du build ESM bundler de Vue afin d'éviter
+      // des résolutions vers le fichier CommonJS qui cassent les imports nommés.
+      'vue': 'vue/dist/vue.runtime.esm-bundler.js',
       '@': resolve(__dirname, './src'),
     },
   },

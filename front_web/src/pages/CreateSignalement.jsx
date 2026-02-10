@@ -41,8 +41,9 @@ export default function CreateSignalement() {
     typeId: '',
     description: '',
     surfaceM2: '',
-    budget: '',
+    prix_m2: '',
     entrepriseConcernee: '',
+    niveau: '5',
     isAnonymous: false
   });
   const [formErrors, setFormErrors] = useState({});
@@ -89,8 +90,12 @@ export default function CreateSignalement() {
       errors.surfaceM2 = 'La surface doit être un nombre valide';
     }
 
-    if (formData.budget && isNaN(parseFloat(formData.budget))) {
-      errors.budget = 'Le budget doit être un nombre valide';
+    if (formData.prix_m2 && isNaN(parseFloat(formData.prix_m2))) {
+      errors.prix_m2 = 'Le prix par m² doit être un nombre valide';
+    }
+
+    if (!formData.niveau || parseInt(formData.niveau) < 1 || parseInt(formData.niveau) > 10) {
+      errors.niveau = 'Le niveau doit être entre 1 et 10';
     }
 
     setFormErrors(errors);
@@ -133,9 +138,10 @@ export default function CreateSignalement() {
         latitude: parseFloat(formData.latitude),
         longitude: parseFloat(formData.longitude),
         typeId: formData.typeId,
+        niveau: formData.niveau ? parseInt(formData.niveau) : null,
         description: formData.description,
         surfaceM2: formData.surfaceM2 ? parseFloat(formData.surfaceM2) : null,
-        budget: formData.budget ? parseFloat(formData.budget) : null,
+        budget: formData.prix_m2 ? parseFloat(formData.prix_m2) : null,
         entrepriseConcernee: formData.entrepriseConcernee || null,
         isAnonymous: formData.isAnonymous
       });
@@ -147,7 +153,8 @@ export default function CreateSignalement() {
         typeId: '',
         description: '',
         surfaceM2: '',
-        budget: '',
+        prix_m2: '',
+        niveau: '5',
         entrepriseConcernee: '',
         isAnonymous: false
       });
@@ -332,22 +339,22 @@ export default function CreateSignalement() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="budget">
-                  Budget estimé (Ariary)
+                <label htmlFor="prix_m2">
+                  Prix par m² (Ariary)
                 </label>
                 <input
-                  id="budget"
-                  name="budget"
+                  id="prix_m2"
+                  name="prix_m2"
                   type="number"
                   min="0"
                   step="1000"
-                  value={formData.budget}
+                  value={formData.prix_m2}
                   onChange={handleInputChange}
-                  className={`form-input ${formErrors.budget ? 'error' : ''}`}
+                  className={`form-input ${formErrors.prix_m2 ? 'error' : ''}`}
                   placeholder="Ex: 50000"
                 />
-                {formErrors.budget && (
-                  <p className="error-message">{formErrors.budget}</p>
+                {formErrors.prix_m2 && (
+                  <p className="error-message">{formErrors.prix_m2}</p>
                 )}
               </div>
             </div>
@@ -365,6 +372,28 @@ export default function CreateSignalement() {
                 className="form-input"
                 placeholder="Nom de l'entreprise (optionnel)"
               />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="niveau">
+                Niveau de priorité <span className="required">*</span>
+              </label>
+              <select
+                id="niveau"
+                name="niveau"
+                value={formData.niveau}
+                onChange={handleInputChange}
+                className={`form-input ${formErrors.niveau ? 'error' : ''}`}
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                  <option key={num} value={num.toString()}>
+                    {num} - {num <= 3 ? 'Faible' : num <= 6 ? 'Moyen' : 'Élevé'}
+                  </option>
+                ))}
+              </select>
+              {formErrors.niveau && (
+                <p className="error-message">{formErrors.niveau}</p>
+              )}
             </div>
           </div>
 

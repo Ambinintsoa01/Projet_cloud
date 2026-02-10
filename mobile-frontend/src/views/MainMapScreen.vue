@@ -8,6 +8,9 @@
           <span class="app-title">Carte des Signalements</span>
         </ion-title>
         <ion-buttons slot="end">
+          <ion-button @click="openOptions" class="options-button">
+            <ion-icon name="ellipsis-horizontal" color="primary"></ion-icon>
+          </ion-button>
           <ion-button @click="toggleFilters" class="filter-button">
             <ion-icon name="filter" :color="showFilters ? 'primary' : 'medium'"></ion-icon>
           </ion-button>
@@ -79,6 +82,35 @@
         >
           📍 Sur la carte
         </button>
+      </div>
+
+      <!-- Anciens boutons FAB (cachés) -->
+      <div class="fab-container" style="display: none;">
+        <!-- Bouton "Nouveau signalement" -->
+        <ion-fab
+          vertical="top"
+          horizontal="start"
+          slot="fixed"
+          class="report-fab"
+        >
+          <ion-fab-button router-link="/report/new" color="secondary">
+            <ion-icon name="add"></ion-icon>
+          </ion-fab-button>
+          <ion-label>Formulaire</ion-label>
+        </ion-fab>
+
+        <!-- Bouton "Signaler sur la carte" -->
+        <ion-fab
+          vertical="top"
+          horizontal="start"
+          slot="fixed"
+          class="map-report-fab"
+        >
+          <ion-fab-button router-link="/report/map" color="primary">
+            <ion-icon name="location"></ion-icon>
+          </ion-fab-button>
+          <ion-label>Sur la carte</ion-label>
+        </ion-fab>
       </div>
 
       <!-- Anciens boutons FAB (cachés) -->
@@ -223,10 +255,22 @@
         </div>
       </ion-content>
     </ion-modal>
+    
+    <!-- Modal d'options -->
+    <OptionsModal 
+      :is-open="showOptions"
+      @dismiss="showOptions = false"
+      @select-camera="handleCameraOption"
+      @select-gallery="handleGalleryOption"
+      @select-quick-report="openQuickReport"
+      @select-full-report="() => router.push('/report/new')"
+      @select-current-location="centerOnUserLocation"
+    />
   </ion-page>
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router'
 import {
   IonPage,
   IonHeader,
@@ -255,8 +299,10 @@ import { useMapStore } from '@/stores/map.store'
 import { useReportsStore } from '@/stores/reports.store'
 import { useGeolocation } from '@/composables/useGeolocation'
 import { REPORT_STATUS_LABELS, REPORT_STATUS_COLORS, REPORT_CATEGORY_ICONS, REPORT_CATEGORY_LABELS } from '@/utils/constants'
+import OptionsModal from '@/components/OptionsModal.vue'
+import { useCamera } from '@/composables/useCamera'
 
-// État réactif
+const router = useRouter()
 const mapStore = useMapStore()
 const reportsStore = useReportsStore()
 const { getCurrentPosition, hasUserLocation } = useGeolocation()
@@ -273,6 +319,10 @@ const showReportModal = ref(false)
 const selectedReport = ref(null)
 const isLoading = ref(true)
 const isOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
+const showOptions = ref(false)
+
+// Utiliser le composable caméra
+const { takePhoto, selectFromGallery } = useCamera()
 
 
 // Getters calculés
@@ -526,6 +576,12 @@ const createReportMarker = (report) => {
           </span>
         </div>
         <p class="type"><strong>Type:</strong> ${getTypeEmoji(report)} ${getTypeLabel(report)}</p>
+        ${report.photos && report.photos.length > 0 ? `
+          <div class="popup-photos">
+            <strong>Photos:</strong> ${report.photos.length} 📷
+            ${report.photos[0] ? `<img src="${report.photos[0]}" style="max-width: 100px; max-height: 80px; border-radius: 4px; margin-top: 5px;">` : ''}
+          </div>
+        ` : ''}
         <button class="details-btn" onclick="window.showReportDetails('${report.id}')">
           Voir détails
         </button>
@@ -831,36 +887,67 @@ const showToast = async (message, color = 'primary') => {
   await toast.present()
 }
 
+// Gestion du modal d'options
+const openOptions = () => {
+  showOptions.value = true
+}
+
+const handleCameraOption = async () => {
+  try {
+    const photo = await takePhoto()
+    if (photo) {
+      showToast('Photo prise avec succès ! Redirection vers le signalement...', 'success')
+      // Rediriger vers le signalement avec la photo
+      setTimeout(() => {
+        router.push('/report/map')
+      }, 1500)
+    }
+  } catch (error) {
+    console.error('Erreur prise de photo:', error)
+    showToast('Erreur lors de la prise de photo', 'danger')
+  }
+}
+
+const handleGalleryOption = async () => {
+  try {
+    const photo = await selectFromGallery()
+    if (photo) {
+      showToast('Photo sélectionnée avec succès ! Redirection vers le signalement...', 'success')
+      // Rediriger vers le signalement avec la photo
+      setTimeout(() => {
+        router.push('/report/map')
+      }, 1500)
+    }
+  } catch (error) {
+    console.error('Erreur sélection photo:', error)
+    showToast('Erreur lors de la sélection de photo', 'danger')
+  }
+}
+
+const openQuickReport = () => {
+  // Mode rapide : rediriger vers le signalement avec un mode pré-configuré
+  showToast('Mode signalement rapide activé', 'success')
+  router.push('/report/map')
+}
+
 // Watchers
 watch(filteredReports, updateMarkers)
 
 // Cycle de vie
 onMounted(async () => {
-  console.log('📱 MainMapScreen montée')
+  console.log('🚀 MainMapScreen monté')
   
-  // Configurer les listeners de connexion
-  if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
-    window.addEventListener('online', () => {
-      isOnline.value = true
-      console.log('🟢 En ligne')
-    })
-    window.addEventListener('offline', () => {
-      isOnline.value = false
-      console.log('🔴 Hors ligne')
-    })
-  }
+  // CORRECTION : Utilisez le nom exact de la fonction définie plus haut
+  await initializeMap() 
   
-  // Vérifier l'état initial
-  console.log('🔍 État réseau initial:', isOnline.value)
-  console.log('🔍 Conteneur de carte:', mapContainer.value)
+  // Charger les signalements
+  await loadReports()
   
-  try {
-    await initializeMap()
-    console.log('✅ MainMapScreen prête')
-  } catch (error) {
-    console.error('❌ Erreur fatale au montage:', error)
-    await showToast('Erreur d\'initialisation de la carte', 'danger')
-  }
+  // Forcer la mise à jour des marqueurs après 1 seconde
+  setTimeout(() => {
+    console.log('🔄 Mise à jour forcée des marqueurs...')
+    updateMarkers()
+  }, 1000)
 })
 
 onUnmounted(() => {

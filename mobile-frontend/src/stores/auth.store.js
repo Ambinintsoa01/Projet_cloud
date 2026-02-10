@@ -14,7 +14,11 @@ export const useAuthStore = defineStore('auth', () => {
   // État
   const user = ref(storageService.getUserData())
   const token = ref(null)
-  const isAuthenticated = computed(() => !!auth.currentUser)
+  const isAuthReady = ref(false) // Nouveau flag pour savoir si Firebase Auth est prêt
+  const isAuthenticated = computed(() => {
+    // Vérifier à la fois Firebase Auth ET les données locales
+    return !!auth.currentUser || !!user.value
+  })
   const isLoading = ref(false)
 
   // Getters
@@ -36,8 +40,32 @@ export const useAuthStore = defineStore('auth', () => {
       const firebaseUser = userCredential.user
 
       // Récupérer les données utilisateur depuis Firestore
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-      const userData = userDoc.exists() ? userDoc.data() : {}
+      const userDocRef = doc(db, 'users', firebaseUser.uid)
+      const userDoc = await getDoc(userDocRef)
+      
+      let userData = {}
+      
+      // Si le document n'existe pas, le créer
+      if (!userDoc.exists()) {
+        console.log('⚠️ Document utilisateur inexistant, création...')
+        userData = {
+          fullName: firebaseUser.displayName || 'Utilisateur',
+          email: firebaseUser.email,
+          roles: ['USER'],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+        
+        try {
+          await setDoc(userDocRef, userData)
+          console.log('✅ Document utilisateur créé dans Firestore')
+        } catch (setDocError) {
+          console.warn('⚠️ Impossible de créer le document utilisateur:', setDocError)
+          // Continuer même si la création échoue
+        }
+      } else {
+        userData = userDoc.data()
+      }
 
       user.value = {
         id: firebaseUser.uid,
@@ -52,6 +80,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       return { success: true }
     } catch (error) {
+      console.error('❌ Erreur de connexion:', error)
       const message = error?.message || 'Erreur lors de la connexion'
       throw new Error(message)
     } finally {
@@ -145,28 +174,70 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Observer l'état d'authentification Firebase
   onAuthStateChanged(auth, async (firebaseUser) => {
-    if (firebaseUser) {
-      // Utilisateur connecté - récupérer les données depuis Firestore
-      try {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-        const userData = userDoc.exists() ? userDoc.data() : {}
+    try {
+      if (firebaseUser) {
+        // Utilisateur connecté - récupérer les données depuis Firestore
+        try {
+          const userDocRef = doc(db, 'users', firebaseUser.uid)
+          const userDoc = await getDoc(userDocRef)
+          
+          let userData = {}
+          
+          // Si le document n'existe pas, le créer
+          if (!userDoc.exists()) {
+            console.log('⚠️ onAuthStateChanged: Document utilisateur inexistant, création...')
+            userData = {
+              fullName: firebaseUser.displayName || 'Utilisateur',
+              email: firebaseUser.email,
+              roles: ['USER'],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+            
+            try {
+              await setDoc(userDocRef, userData)
+              console.log('✅ Document utilisateur créé dans Firestore')
+            } catch (setDocError) {
+              console.warn('⚠️ Impossible de créer le document utilisateur:', setDocError)
+            }
+          } else {
+            userData = userDoc.data()
+          }
 
-        user.value = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email,
-          fullName: userData.fullName || firebaseUser.displayName || 'Utilisateur',
-          roles: userData.roles || ['USER'],
-          createdAt: userData.createdAt || new Date().toISOString()
+          user.value = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email,
+            fullName: userData.fullName || firebaseUser.displayName || 'Utilisateur',
+            roles: userData.roles || ['USER'],
+            createdAt: userData.createdAt || new Date().toISOString()
+          }
+          
+          storageService.setUserData(user.value)
+        } catch (error) {
+          console.warn('⚠️ Erreur récupération données utilisateur:', error.message)
+          // En cas d'erreur, utiliser les données de Firebase Auth
+          user.value = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email,
+            fullName: firebaseUser.displayName || 'Utilisateur',
+            roles: ['USER'],
+            createdAt: new Date().toISOString()
+          }
+          storageService.setUserData(user.value)
         }
-        
-        storageService.setUserData(user.value)
-      } catch (error) {
-        console.warn('⚠️ Erreur récupération données utilisateur:', error.message)
+      } else {
+        // Utilisateur déconnecté - vérifier le localStorage
+        const storedUser = storageService.getUserData()
+        if (!storedUser) {
+          user.value = null
+          token.value = null
+        }
       }
-    } else {
-      // Utilisateur déconnecté
-      user.value = null
-      token.value = null
+    } catch (error) {
+      console.error('❌ Erreur critique dans onAuthStateChanged:', error)
+    } finally {
+      // Toujours marquer que Firebase Auth est prêt, même en cas d'erreur
+      isAuthReady.value = true
     }
   })
 
@@ -178,6 +249,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     token,
     isLoading,
+    isAuthReady,
 
     // Getters
     isAuthenticated,
