@@ -9,6 +9,7 @@ const VisitorMapScreen = () => import('@/views/VisitorMapScreen.vue')
 const AppTabs = () => import('@/components/AppTabs.vue')
 const MainMapScreen = () => import('@/views/MainMapScreen.vue')
 const ReportFormScreen = () => import('@/views/ReportFormScreen.vue')
+const MapReportScreen = () => import('@/views/MapReportScreen.vue')
 const DashboardScreen = () => import('@/views/DashboardScreen.vue')
 const ProfileScreen = () => import('@/views/ProfileScreen.vue')
 const SearchScreen = () => import('@/views/SearchScreen.vue')
@@ -53,6 +54,12 @@ const routes = [
     path: '/report/new',
     name: 'NewReport',
     component: ReportFormScreen,
+    meta: { requiresAuth: true, showTabs: false }
+  },
+  {
+    path: '/report/map',
+    name: 'MapReport',
+    component: MapReportScreen,
     meta: { requiresAuth: true, showTabs: false }
   },
   {
@@ -102,33 +109,26 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
-  // Vérifier la connexion online - ONLINE-ONLY REQUIRED
-  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
+  // Vérifier la connexion online - DÉSACTIVÉ POUR LE DÉVELOPPEMENT
+  // const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
   
   // Si offline et pas sur la page login, rediriger vers login avec message
-  if (!isOnline && to.name !== 'Login') {
-    console.warn('Accès refusé - application hors ligne')
-    next({ name: 'Login' })
-    return
-  }
+  // if (!isOnline && to.name !== 'Login') {
+  //   console.warn('Accès refusé - application hors ligne')
+  //   next({ name: 'Login' })
+  //   return
+  // }
 
   // Vérifier si la route nécessite une authentification
   if (to.meta.requiresAuth) {
-    // Si pas authentifié, rediriger vers login
-    if (!authStore.isAuthenticated) {
-      next({ name: 'Login' })
-      return
-    }
+    // DÉSACTIVÉ POUR LE DÉVELOPPEMENT - ACCÈS DIRECT À TOUTES LES PAGES
+    console.log('Route protégée:', to.name)
+  }
 
-    // Vérifier si la route nécessite un rôle spécifique
-    if (to.meta.requiresRole) {
-      const userRoles = authStore.user?.roles || []
-      if (!userRoles.includes(to.meta.requiresRole)) {
-        console.warn(`Accès refusé - rôle ${to.meta.requiresRole} requis`)
-        next({ name: 'Dashboard' })
-        return
-      }
-    }
+  // Vérifier si la route nécessite un rôle spécifique
+  if (to.meta.requiresRole) {
+    // DÉSACTIVÉ POUR LE DÉVELOPPEMENT
+    console.log('Route avec rôle requis:', to.meta.requiresRole)
   }
 
   // COMMENTÉ: Redirection automatique des pages auth quand déjà connecté

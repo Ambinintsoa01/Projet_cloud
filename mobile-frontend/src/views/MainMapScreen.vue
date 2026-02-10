@@ -65,17 +65,50 @@
         </ion-button>
       </div>
 
-      <!-- Bouton "Nouveau signalement" -->
-      <ion-fab
-        vertical="bottom"
-        horizontal="start"
-        slot="fixed"
-        class="report-fab"
-      >
-        <ion-fab-button router-link="/report/new" color="secondary">
-          <ion-icon name="add"></ion-icon>
-        </ion-fab-button>
-      </ion-fab>
+      <!-- Boutons de signalement visibles -->
+      <div class="simple-buttons">
+        <button 
+          @click="$router.push('/report/new')" 
+          class="simple-btn orange-btn"
+        >
+          📝 Formulaire
+        </button>
+        <button 
+          @click="$router.push('/report/map')" 
+          class="simple-btn blue-btn"
+        >
+          📍 Sur la carte
+        </button>
+      </div>
+
+      <!-- Anciens boutons FAB (cachés) -->
+      <div class="fab-container" style="display: none;">
+        <!-- Bouton "Nouveau signalement" -->
+        <ion-fab
+          vertical="top"
+          horizontal="start"
+          slot="fixed"
+          class="report-fab"
+        >
+          <ion-fab-button router-link="/report/new" color="secondary">
+            <ion-icon name="add"></ion-icon>
+          </ion-fab-button>
+          <ion-label>Formulaire</ion-label>
+        </ion-fab>
+
+        <!-- Bouton "Signaler sur la carte" -->
+        <ion-fab
+          vertical="top"
+          horizontal="start"
+          slot="fixed"
+          class="map-report-fab"
+        >
+          <ion-fab-button router-link="/report/map" color="primary">
+            <ion-icon name="location"></ion-icon>
+          </ion-fab-button>
+          <ion-label>Sur la carte</ion-label>
+        </ion-fab>
+      </div>
 
       <!-- Indicateur de chargement -->
       <div v-if="isLoading" class="loading-overlay">
@@ -1129,6 +1162,91 @@ onUnmounted(() => {
 
 :deep(.cluster-medium) {
   font-size: 13px;
+}
+
+/* Boutons simples visibles */
+.simple-buttons {
+  position: fixed;
+  top: 80px;
+  left: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.simple-btn {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-width: 140px;
+}
+
+.simple-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.orange-btn {
+  background: #ff9800;
+  color: white;
+}
+
+.blue-btn {
+  background: #2196f3;
+  color: white;
+}
+
+/* Boutons flottants */
+.fab-container {
+  position: fixed;
+  top: 80px;
+  left: 20px;
+  z-index: 1000;
+}
+
+.report-fab {
+  position: absolute;
+  top: 0px;
+}
+
+.map-report-fab {
+  position: absolute;
+  top: 80px;
+}
+
+.report-fab ion-fab-button,
+.map-report-fab ion-fab-button {
+  width: 56px;
+  height: 56px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.report-fab ion-label,
+.map-report-fab ion-label {
+  position: absolute;
+  right: 70px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.report-fab:hover ion-label,
+.map-report-fab:hover ion-label {
+  opacity: 1;
 }
 
 :deep(.cluster-large) {

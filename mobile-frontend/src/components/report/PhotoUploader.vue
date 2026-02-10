@@ -157,7 +157,7 @@ import {
   IonActionSheet,
   IonSpinner
 } from '@ionic/vue'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useCamera } from '@/composables/useCamera'
 
 // Props
